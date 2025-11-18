@@ -33,30 +33,36 @@ Sistema web completo para gestión de taller automotriz desarrollado con **Flask
 cd Taller-Automotriz
 ```
 
-### 2. Crear entorno virtual (recomendado)
+### 2. Activar entorno virtual
+
+Ya tienes tu entorno virtual `venv` creado. Actívalo:
 
 **Windows:**
 ```bash
-python -m venv venv
 venv\Scripts\activate
 ```
 
 **Linux/Mac:**
 ```bash
-python3 -m venv venv
 source venv/bin/activate
 ```
 
+**Nota:** Verás `(venv)` al inicio de tu línea de comandos cuando esté activado.
+
 ### 3. Instalar dependencias
+
+Con el entorno virtual activado, instala las dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
+**Nota:** Ver el archivo `dependencias.txt` para información detallada sobre cada dependencia y solución de problemas.
+
 ### 4. Configurar base de datos
 
 1. Abrir **MySQL Workbench**
-2. Ejecutar el script: `base de datos/servicio_automotriz_completo.sql`
+2. Ejecutar el script: `base de datos/servicio_automotriz.sql`
 3. Verificar que la base de datos `servicio_automotriz` se haya creado correctamente
 
 ### 5. Configurar conexión a MySQL
@@ -76,9 +82,21 @@ DB_CONFIG = {
 
 ### 6. Ejecutar la aplicación
 
+**Asegúrate de tener el entorno virtual `venv` activado:**
+
+**Windows:**
 ```bash
+venv\Scripts\activate
 python app.py
 ```
+
+**Linux/Mac:**
+```bash
+source venv/bin/activate
+python app.py
+```
+
+**Nota:** Verás `(venv)` al inicio de tu línea de comandos cuando esté activado.
 
 La aplicación estará disponible en: **http://localhost:5000**
 

@@ -1,0 +1,165 @@
+# ============================================
+# DEPENDENCIAS DEL PROYECTO - TALLER AUTOMOTRIZ
+# Sistema Web Flask con MySQL
+# ============================================
+
+# ============================================
+# DEPENDENCIAS DE PYTHON (requirements.txt)
+# ============================================
+
+Flask==3.0.0
+mysql-connector-python==8.2.0
+Werkzeug==3.0.1
+reportlab==4.0.7
+python-dotenv==1.0.0
+Flask-Mail==0.9.1
+
+# ============================================
+# DESCRIPCIÓN DE DEPENDENCIAS
+# ============================================
+
+# Flask==3.0.0
+#   - Framework web para Python
+#   - Manejo de rutas, templates, sesiones
+#   - Versión actualizada compatible con Python 3.14
+
+# mysql-connector-python==8.2.0
+#   - Conector oficial de MySQL para Python
+#   - Permite conexión a base de datos MySQL
+#   - Soporte completo para MySQL 5.7+ y MariaDB
+
+# Werkzeug==3.0.1
+#   - Utilidades para aplicaciones WSGI
+#   - Hashing de contraseñas (bcrypt)
+#   - Manejo de sesiones
+#   - Compatible con Python 3.14 y Flask 3.0.0
+
+# reportlab==4.0.7
+#   - Generación de PDFs
+#   - Usado para generar presupuestos en PDF
+#   - Soporte para texto, imágenes, tablas
+
+# python-dotenv==1.0.0
+#   - Carga variables de entorno desde archivo .env
+#   - Útil para configuración sin hardcodear valores
+#   - Opcional pero recomendado
+
+# Flask-Mail==0.9.1
+#   - Extensión de Flask para envío de correos electrónicos
+#   - Soporte para SMTP
+#   - Usado para enviar correos de bienvenida y cotizaciones
+
+# ============================================
+# REQUISITOS DEL SISTEMA
+# ============================================
+
+# Python
+#   - Versión mínima: Python 3.8
+#   - Versión recomendada: Python 3.10 o superior
+#   - Verificar con: python --version
+
+# MySQL / MariaDB
+#   - Versión mínima: MySQL 5.7 o MariaDB 10.3
+#   - Versión recomendada: MySQL 8.0+ o MariaDB 10.5+
+#   - Servidor MySQL debe estar ejecutándose
+
+# pip (Python Package Installer)
+#   - Incluido con Python 3.4+
+#   - Verificar con: pip --version
+#   - Actualizar con: python -m pip install --upgrade pip
+
+# ============================================
+# INSTALACIÓN DE DEPENDENCIAS
+# ============================================
+
+# Método 1: Usando requirements.txt (RECOMENDADO)
+#   pip install -r requirements.txt
+
+# Método 2: Instalación individual
+#   pip install Flask==2.3.3
+#   pip install mysql-connector-python==8.2.0
+#   pip install Werkzeug==2.3.7
+#   pip install reportlab==4.0.7
+#   pip install python-dotenv==1.0.0
+
+# Método 3: Con entorno virtual (RECOMENDADO para desarrollo)
+#   Ya tienes tu entorno virtual 'venv' creado
+#   # Windows:
+#   venv\Scripts\activate
+#   # Linux/Mac:
+#   source venv/bin/activate
+#   pip install -r requirements.txt
+
+# ============================================
+# VERIFICACIÓN DE INSTALACIÓN
+# ============================================
+
+# Verificar que todas las dependencias estén instaladas:
+#   pip list
+
+# Deberías ver:
+#   Flask (2.3.3)
+#   mysql-connector-python (8.2.0)
+#   Werkzeug (2.3.7)
+#   reportlab (4.0.7)
+#   python-dotenv (1.0.0)
+
+# ============================================
+# DEPENDENCIAS OPCIONALES (NO REQUERIDAS)
+# ============================================
+
+# gunicorn
+#   - Servidor WSGI para producción
+#   - Solo necesario para despliegue en producción
+#   - Instalar con: pip install gunicorn
+
+# ============================================
+# SOLUCIÓN DE PROBLEMAS
+# ============================================
+
+# Error: "pip no se reconoce como comando"
+#   - Asegúrate de que Python esté instalado
+#   - Usa: python -m pip install -r requirements.txt
+
+# Error: "Microsoft Visual C++ 14.0 is required"
+#   - Algunos paquetes requieren compiladores C++
+#   - Instala Visual Studio Build Tools (Windows)
+#   - O usa versiones precompiladas de los paquetes
+
+# Error: "mysql-connector-python installation failed"
+#   - Verifica que tengas Python 3.8+
+#   - Intenta: pip install --upgrade pip
+#   - Luego: pip install mysql-connector-python
+
+# Error: "No module named 'flask'"
+#   - Verifica que estés en el entorno virtual correcto
+#   - Activa el entorno virtual antes de ejecutar
+#   - Reinstala: pip install -r requirements.txt
+
+# ============================================
+# ACTUALIZACIÓN DE DEPENDENCIAS
+# ============================================
+
+# Para actualizar todas las dependencias a la última versión compatible:
+#   pip install --upgrade Flask mysql-connector-python Werkzeug reportlab python-dotenv
+
+# Para verificar versiones instaladas:
+#   pip show Flask
+#   pip show mysql-connector-python
+#   pip show Werkzeug
+#   pip show reportlab
+#   pip show python-dotenv
+
+# ============================================
+# NOTAS IMPORTANTES
+# ============================================
+
+# - Las versiones especificadas son compatibles entre sí
+# - No actualices Flask sin actualizar Werkzeug
+# - mysql-connector-python 8.2.0 es compatible con MySQL 5.7+
+# - reportlab 4.0.7 requiere Python 3.7+
+
+# ============================================
+# FIN DEL ARCHIVO
+# ============================================
+

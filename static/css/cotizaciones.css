@@ -1,0 +1,86 @@
+/**
+ * ============================================
+ * ESTILOS DE COTIZACIONES - SISTEMA DE TALLER AUTOMOTRIZ
+ * ============================================
+ * Este archivo contiene los estilos específicos para la página
+ * de cotizaciones, incluyendo la vista previa del precio calculado.
+ * ============================================
+ */
+
+/* ============================================
+   VISTA PREVIA DE PRECIO
+   ============================================ */
+
+/**
+ * .precio-preview
+ * Contenedor que muestra el precio estimado calculado dinámicamente.
+ * Se muestra cuando el usuario ha seleccionado servicio, año y cilindros.
+ * Inicialmente oculto (display: none) y se muestra con la clase .show
+ */
+.precio-preview {
+    /* Fondo verde claro para indicar información positiva */
+    background-color: #e8f5e9;
+    
+    /* Padding interno para dar espacio al contenido */
+    padding: 15px;
+    
+    /* Bordes redondeados para un aspecto más moderno */
+    border-radius: 8px;
+    
+    /* Margen vertical para separar del resto del formulario */
+    margin: 15px 0;
+    
+    /* Borde izquierdo verde para destacar */
+    border-left: 4px solid #4caf50;
+    
+    /* Oculto por defecto hasta que se calcule un precio */
+    display: none;
+}
+
+/**
+ * .precio-preview.show
+ * Clase que se agrega cuando hay un precio calculado para mostrar el contenedor.
+ * Cambia display de none a block.
+ */
+.precio-preview.show {
+    /* Mostrar el contenedor cuando hay precio calculado */
+    display: block;
+}
+
+/* ============================================
+   TÍTULO DE VISTA PREVIA
+   ============================================ */
+
+/**
+ * .precio-preview h3
+ * Título dentro de la vista previa del precio.
+ * Estilo para el texto "Precio Estimado:".
+ */
+.precio-preview h3 {
+    /* Sin margen superior e inferior, solo inferior */
+    margin: 0 0 10px 0;
+    
+    /* Color verde oscuro para el título */
+    color: #2e7d32;
+}
+
+/* ============================================
+   PRECIO CALCULADO
+   ============================================ */
+
+/**
+ * .precio-preview .precio
+ * Contenedor del precio numérico calculado.
+ * Muestra el valor en formato de moneda (ej: $450.00).
+ */
+.precio-preview .precio {
+    /* Tamaño de fuente grande para destacar el precio */
+    font-size: 24px;
+    
+    /* Texto en negrita para mayor énfasis */
+    font-weight: bold;
+    
+    /* Color verde muy oscuro para el precio */
+    color: #1b5e20;
+}
+
