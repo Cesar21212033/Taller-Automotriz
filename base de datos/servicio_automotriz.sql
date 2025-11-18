@@ -323,7 +323,7 @@ SET SQL_SAFE_UPDATES = 1;
 -- 3. Abre este archivo (File > Open SQL Script)
 -- 4. Ejecuta todo el script (F5 o Execute All)
 -- 
--- CREDENCIALES POR DEFECTO:
+-- CREDENCIALES POR DEFECTO: (Para iniciar sesion como tipo admin)
 -- Usuario: admin
 -- Contraseña: admin123
 -- ============================================
