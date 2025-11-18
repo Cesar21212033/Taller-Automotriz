@@ -149,35 +149,6 @@ DB_CONFIG = {
 
 **⚠️ IMPORTANTE:** Reemplaza `'TU_CONTRASEÑA'` con tu contraseña real de MySQL.
 
-### Paso 7: Configurar Correo Electrónico (Opcional)
-
-Si quieres que funcione el envío de correos (bienvenida, confirmación de citas, cotizaciones), configura las credenciales en `app.py` (líneas 55-61):
-
-```python
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'tu_correo@gmail.com'
-app.config['MAIL_PASSWORD'] = 'tu_contraseña_de_aplicacion'  # ⚠️ Contraseña de aplicación, no la normal
-app.config['MAIL_DEFAULT_SENDER'] = 'tu_correo@gmail.com'
-```
-
-**Nota:** Para Gmail, necesitas generar una "Contraseña de aplicación" desde tu cuenta de Google. No uses tu contraseña normal.
-
-**Alternativa:** Puedes crear un archivo `.env` en la raíz del proyecto:
-
-```env
-MAIL_SERVER=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USE_TLS=True
-MAIL_USERNAME=tu_correo@gmail.com
-MAIL_PASSWORD=tu_contraseña_de_aplicacion
-MAIL_DEFAULT_SENDER=tu_correo@gmail.com
-SECRET_KEY=tu-clave-secreta-muy-larga-y-aleatoria
-```
-
-Y el código cargará automáticamente estas variables.
-
 ## ▶️ Ejecución
 
 ### Ejecutar el Servidor de Desarrollo
