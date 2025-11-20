@@ -1,0 +1,266 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Gestión de Precios{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<h2>Gestión de Precios de Servicios</h2>
+<p class="mb-20 text-muted">
+    Configura los precios de los servicios según el número de cilindros y año del vehículo.
+</p>
+
+<div class="form-container mb-30">
+    <h3>Crear Nueva Configuración de Precio</h3>
+    <form method="POST" action="{{ url_for('admin_precios') }}">
+        <input type="hidden" name="accion" value="crear">
+        
+        <div class="form-group">
+            <label for="servicio_id">Servicio *</label>
+            <select id="servicio_id" name="servicio_id" required>
+                <option value="">Seleccione un servicio</option>
+                {% for servicio in servicios %}
+                    <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="cilindros_min">Cilindros Mínimo *</label>
+            <input type="number" id="cilindros_min" name="cilindros_min" min="4" max="12" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="cilindros_max">Cilindros Máximo *</label>
+            <input type="number" id="cilindros_max" name="cilindros_max" min="4" max="12" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="anio_min">Año Mínimo (opcional)</label>
+            <input type="number" id="anio_min" name="anio_min" min="1950" max="2030" placeholder="Dejar vacío para todos">
+        </div>
+        
+        <div class="form-group">
+            <label for="anio_max">Año Máximo (opcional)</label>
+            <input type="number" id="anio_max" name="anio_max" min="1950" max="2030" placeholder="Dejar vacío para todos">
+        </div>
+        
+        <div class="form-group">
+            <label for="precio_base">Precio Base *</label>
+            <input type="number" id="precio_base" name="precio_base" step="0.01" min="0" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="precio_por_cilindro">Precio por Cilindro (opcional)</label>
+            <input type="number" id="precio_por_cilindro" name="precio_por_cilindro" step="0.01" min="0" value="0">
+        </div>
+        
+        <div class="form-group">
+            <label for="precio_por_anio">Precio por Año (opcional)</label>
+            <input type="number" id="precio_por_anio" name="precio_por_anio" step="0.01" min="0" value="0">
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">Crear Precio</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <h3>Configuraciones de Precios</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Servicio</th>
+                <th>Cilindros</th>
+                <th>Año</th>
+                <th>Precio Base</th>
+                <th>Precio/Cilindro</th>
+                <th>Precio/Año</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if precios %}
+                {% for precio in precios %}
+                    <tr>
+                        <td>{{ precio.servicio_nombre }}</td>
+                        <td>{{ precio.cilindros_min }}-{{ precio.cilindros_max }}</td>
+                        <td>
+                            {% if precio.anio_min and precio.anio_max %}
+                                {{ precio.anio_min }}-{{ precio.anio_max }}
+                            {% else %}
+                                Todos
+                            {% endif %}
+                        </td>
+                        <td>${{ "%.2f"|format(precio.precio_base) }}</td>
+                        <td>${{ "%.2f"|format(precio.precio_por_cilindro or 0) }}</td>
+                        <td>${{ "%.2f"|format(precio.precio_por_anio or 0) }}</td>
+                        <td>{{ 'Activo' if precio.activo else 'Inactivo' }}</td>
+                        <td>
+                            <button 
+                                class="btn btn-warning btn-sm" 
+                                onclick="editarPrecio(this)"
+                                data-id="{{ precio.id }}"
+                                data-servicio-id="{{ precio.servicio_id }}"
+                                data-cilindros-min="{{ precio.cilindros_min }}"
+                                data-cilindros-max="{{ precio.cilindros_max }}"
+                                data-anio-min="{{ precio.anio_min or '' }}"
+                                data-anio-max="{{ precio.anio_max or '' }}"
+                                data-precio-base="{{ precio.precio_base }}"
+                                data-precio-cilindro="{{ precio.precio_por_cilindro or 0 }}"
+                                data-precio-anio="{{ precio.precio_por_anio or 0 }}"
+                                data-activo="{{ 1 if precio.activo else 0 }}">
+                                Editar
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="eliminarPrecio(this)" data-id="{{ precio.id }}">Eliminar</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="8" class="table-empty">No hay precios configurados</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Editar -->
+<div id="modalEditar" class="modal">
+    <div class="modal-content large">
+        <h3>Editar Precio</h3>
+        <form method="POST" action="{{ url_for('admin_precios') }}" id="formEditar">
+            <input type="hidden" name="accion" value="editar">
+            <input type="hidden" name="id" id="edit_id">
+            
+            <div class="form-group">
+                <label for="edit_servicio_id">Servicio *</label>
+                <select id="edit_servicio_id" name="servicio_id" required>
+                    {% for servicio in servicios %}
+                        <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_cilindros_min">Cilindros Mínimo *</label>
+                <input type="number" id="edit_cilindros_min" name="cilindros_min" min="4" max="12" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_cilindros_max">Cilindros Máximo *</label>
+                <input type="number" id="edit_cilindros_max" name="cilindros_max" min="4" max="12" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_anio_min">Año Mínimo (opcional)</label>
+                <input type="number" id="edit_anio_min" name="anio_min" min="1950" max="2030">
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_anio_max">Año Máximo (opcional)</label>
+                <input type="number" id="edit_anio_max" name="anio_max" min="1950" max="2030">
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_precio_base">Precio Base *</label>
+                <input type="number" id="edit_precio_base" name="precio_base" step="0.01" min="0" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_precio_por_cilindro">Precio por Cilindro</label>
+                <input type="number" id="edit_precio_por_cilindro" name="precio_por_cilindro" step="0.01" min="0">
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_precio_por_anio">Precio por Año</label>
+                <input type="number" id="edit_precio_por_anio" name="precio_por_anio" step="0.01" min="0">
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="edit_activo" name="activo" value="1">
+                    Precio Activo
+                </label>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">Guardar</button>
+                <button type="button" onclick="cerrarModal()" class="btn btn-primary">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editarPrecio(button) {
+    const precio = {
+        id: button.getAttribute('data-id'),
+        servicio_id: button.getAttribute('data-servicio-id'),
+        cilindros_min: button.getAttribute('data-cilindros-min'),
+        cilindros_max: button.getAttribute('data-cilindros-max'),
+        anio_min: button.getAttribute('data-anio-min'),
+        anio_max: button.getAttribute('data-anio-max'),
+        precio_base: button.getAttribute('data-precio-base'),
+        precio_por_cilindro: button.getAttribute('data-precio-cilindro'),
+        precio_por_anio: button.getAttribute('data-precio-anio'),
+        activo: button.getAttribute('data-activo')
+    };
+    
+    document.getElementById('edit_id').value = precio.id;
+    document.getElementById('edit_servicio_id').value = precio.servicio_id;
+    document.getElementById('edit_cilindros_min').value = precio.cilindros_min;
+    document.getElementById('edit_cilindros_max').value = precio.cilindros_max;
+    document.getElementById('edit_anio_min').value = precio.anio_min || '';
+    document.getElementById('edit_anio_max').value = precio.anio_max || '';
+    document.getElementById('edit_precio_base').value = precio.precio_base;
+    document.getElementById('edit_precio_por_cilindro').value = precio.precio_por_cilindro || 0;
+    document.getElementById('edit_precio_por_anio').value = precio.precio_por_anio || 0;
+    document.getElementById('edit_activo').checked = precio.activo == 1;
+    
+    document.getElementById('modalEditar').classList.add('show');
+}
+
+function cerrarModal() {
+    document.getElementById('modalEditar').classList.remove('show');
+}
+
+function eliminarPrecio(button) {
+    const id = button.getAttribute('data-id');
+    if (confirm('¿Está seguro de eliminar esta configuración de precio?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin_precios") }}';
+        form.innerHTML = '<input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="' + id + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('modalEditar');
+    if (modal && event.target == modal) {
+        cerrarModal();
+    }
+});
+</script>
+<style>
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+.modal.show { display: block; }
+.modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; }
+.modal-content.large { max-width: 800px; }
+.table-container { overflow-x: auto; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; background-color: white; }
+table thead { background-color: #f8f9fa; }
+table th { padding: 12px; text-align: left; font-weight: bold; color: #333; border-bottom: 2px solid #dee2e6; }
+table td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+table tbody tr:hover { background-color: #f8f9fa; }
+.table-empty { text-align: center; padding: 20px; color: #666; }
+.mb-20 { margin-bottom: 20px; }
+.text-muted { color: #666; }
+</style>
+{% endblock %}
+

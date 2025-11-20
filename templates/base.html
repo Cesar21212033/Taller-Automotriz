@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Servicio Automotriz Hernández{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='imagenes/logo.jpg') }}" width="100px" alt="Logo del negocio">
+        <h1>Servicio Automotriz Hernández</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('index') }}">Inicio</a></li>
+                <li><a href="{{ url_for('servicios') }}">Servicios</a></li>
+                <li><a href="{{ url_for('cotizaciones') }}">Cotizaciones</a></li>
+                <li><a href="{{ url_for('contacto') }}">Contacto</a></li>
+                <li><a href="{{ url_for('citas') }}">Agendar Cita</a></li>
+                {% if session.usuario_id %}
+                    {% if session.rol == 'admin' %}
+                        <li><a href="{{ url_for('admin_dashboard') }}" style="background-color: #555; padding: 5px 15px; border-radius: 5px;">Panel Admin</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('user_dashboard') }}" style="background-color: #555; padding: 5px 15px; border-radius: 5px;">Mi Panel</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('logout') }}" style="background-color: #dc3545; padding: 5px 15px; border-radius: 5px;">Cerrar Sesión</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login') }}" style="background-color: #555; padding: 5px 15px; border-radius: 5px;">Iniciar Sesión</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Servicio Automotriz Hernández. Todos los derechos reservados.</p>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

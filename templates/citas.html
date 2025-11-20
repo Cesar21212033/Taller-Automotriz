@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Agendar Cita - Servicio Automotriz{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Agendar Cita</h2>
+    <form method="POST" action="{{ url_for('citas') }}">
+        <div class="form-group">
+            <label for="nombre">Nombre:</label>
+            <input type="text" id="nombre" name="nombre" required>
+        </div>
+
+        <div class="form-group">
+            <label for="telefono">Teléfono:</label>
+            <input type="tel" id="telefono" name="telefono" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Correo Electrónico:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+            <label for="fecha">Fecha:</label>
+            <input type="date" id="fecha" name="fecha" required>
+            <small class="text-muted d-block mt-5">Seleccione una fecha futura</small>
+        </div>
+
+        <div class="form-group">
+            <label for="hora">Hora:</label>
+            <select id="hora" name="hora" required disabled>
+                <option value="">Primero seleccione una fecha</option>
+            </select>
+            <small id="hora_help" class="text-muted d-block mt-5">Horario disponible: 7:00 AM - 5:00 PM</small>
+        </div>
+
+        <div class="form-group">
+            <label for="servicio_id">Servicio *</label>
+            <select id="servicio_id" name="servicio_id" required>
+                <option value="">Seleccione un servicio</option>
+                {% for servicio in servicios %}
+                    <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="button-container">
+            <button type="submit">Agendar</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function initCitas() {
+    const fechaInput = document.getElementById('fecha');
+    const horaSelect = document.getElementById('hora');
+    const horaHelp = document.getElementById('hora_help');
+    
+    if (!fechaInput || !horaSelect) {
+        return;
+    }
+    
+    const hoy = new Date();
+    const fechaMinima = hoy.toISOString().split('T')[0];
+    fechaInput.setAttribute('min', fechaMinima);
+    
+    fechaInput.addEventListener('change', function() {
+        const fechaSeleccionada = new Date(this.value);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        
+        if (fechaSeleccionada < hoy) {
+            alert('Por favor seleccione una fecha futura');
+            this.value = fechaMinima;
+            return;
+        }
+        
+        cargarHorariosDisponibles(this.value);
+    });
+}
+
+function cargarHorariosDisponibles(fecha) {
+    const horaSelect = document.getElementById('hora');
+    const horaHelp = document.getElementById('hora_help');
+    
+    horaSelect.innerHTML = '<option value="">Cargando horarios disponibles...</option>';
+    horaSelect.disabled = true;
+    
+    if (!fecha) {
+        horaSelect.innerHTML = '<option value="">Primero seleccione una fecha</option>';
+        return;
+    }
+    
+    fetch(`/api/horarios_disponibles/${fecha}`)
+        .then(response => response.json())
+        .then(data => {
+            horaSelect.innerHTML = '<option value="">Seleccione un horario</option>';
+            
+            if (data.error) {
+                console.error('Error:', data.error);
+                horaSelect.innerHTML = '<option value="">Error al cargar horarios</option>';
+                horaHelp.textContent = 'Error al cargar horarios disponibles';
+                return;
+            }
+            
+            if (data.horarios && data.horarios.length > 0) {
+                data.horarios.forEach(horario => {
+                    const option = document.createElement('option');
+                    option.value = horario;
+                    
+                    const [hora, minuto] = horario.split(':');
+                    const horaNum = parseInt(hora);
+                    const ampm = horaNum >= 12 ? 'PM' : 'AM';
+                    const hora12 = horaNum > 12 ? horaNum - 12 : (horaNum === 0 ? 12 : horaNum);
+                    option.textContent = `${hora12}:${minuto} ${ampm}`;
+                    
+                    horaSelect.appendChild(option);
+                });
+                
+                horaSelect.disabled = false;
+                horaHelp.textContent = `${data.horarios.length} horarios disponibles para esta fecha`;
+            } else {
+                horaSelect.innerHTML = '<option value="">No hay horarios disponibles</option>';
+                horaHelp.textContent = 'No hay horarios disponibles para esta fecha. Por favor seleccione otra fecha.';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            horaSelect.innerHTML = '<option value="">Error al cargar horarios</option>';
+            horaHelp.textContent = 'Error al cargar horarios disponibles';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', initCitas);
+</script>
+{% endblock %}
+

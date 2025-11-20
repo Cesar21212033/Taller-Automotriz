@@ -1,0 +1,65 @@
+{% extends "usuario/base.html" %}
+
+{% block title %}Mis Cotizaciones{% endblock %}
+
+{% block user_content %}
+<h2>Mis Cotizaciones</h2>
+    <p class="mb-20 text-muted">
+    Aquí puedes ver todas las cotizaciones que has solicitado.
+</p>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Servicio</th>
+                <th>Vehículo</th>
+                <th>Precio</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if cotizaciones %}
+                {% for cotizacion in cotizaciones %}
+                    <tr>
+                        <td>{{ cotizacion.servicio_nombre or cotizacion.servicio }}</td>
+                        <td>
+                            {% if cotizacion.marca_vehiculo %}
+                                {{ cotizacion.marca_vehiculo }}
+                                {% if cotizacion.modelo_vehiculo %}
+                                    {{ cotizacion.modelo_vehiculo }}
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">
+                                    {{ cotizacion.anio_vehiculo if cotizacion.anio_vehiculo else '' }}
+                                    {% if cotizacion.cilindros %}
+                                        - {{ cotizacion.cilindros }} cil.
+                                    {% endif %}
+                                </small>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cotizacion.precio_calculado %}
+                                <strong>${{ "%.2f"|format(cotizacion.precio_calculado) }}</strong>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>{{ cotizacion.fecha_envio.strftime('%d/%m/%Y') if cotizacion.fecha_envio else 'N/A' }}</td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" class="table-empty">
+                        No tienes cotizaciones registradas.<br>
+                        <a href="{{ url_for('cotizaciones') }}">Solicitar una cotización</a>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de Cita</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+            margin: -30px -30px 30px -30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .info-box {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #bdc3c7;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #34495e;
+        }
+        .info-value {
+            color: #2c3e50;
+        }
+        .highlight {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .location-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .location-box h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .location-box p {
+            margin: 8px 0;
+            color: #34495e;
+        }
+        .location-box strong {
+            color: #2c3e50;
+        }
+        .contact-info {
+            background-color: #f8f9fa;
+            border: 2px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .contact-info h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            padding: 8px;
+        }
+        .contact-icon {
+            font-size: 20px;
+            margin-right: 12px;
+            width: 30px;
+            text-align: center;
+        }
+        .contact-text {
+            flex: 1;
+        }
+        .map-link {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .map-link:hover {
+            background-color: #2980b9;
+        }
+        .instructions-box {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .instructions-box h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .instructions-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions-box li {
+            margin: 8px 0;
+            color: #34495e;
+        }
+        .hours-box {
+            background-color: #fff9e6;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .hours-box strong {
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Confirmación de Cita</h1>
+        </div>
+        
+        <p>Estimado/a <strong>{{ cita.nombre }}</strong>,</p>
+        
+        <p>Su cita ha sido registrada exitosamente. A continuación encontrará los detalles:</p>
+        
+        <div class="info-box">
+            <div class="info-row">
+                <span class="info-label">Servicio:</span>
+                <span class="info-value">{{ cita.servicio }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Fecha:</span>
+                <span class="info-value">
+                    {% if cita.fecha %}
+                        {% if cita.fecha is string %}
+                            {% set fecha_parts = cita.fecha.split('-') %}
+                            {% if fecha_parts|length == 3 %}
+                                {% set meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
+                                {% set dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] %}
+                                {% set año = fecha_parts[0]|int %}
+                                {% set mes = fecha_parts[1]|int %}
+                                {% set dia = fecha_parts[2]|int %}
+                                {{ dia }} de {{ meses[mes-1] }} de {{ año }}
+                            {% else %}
+                                {{ cita.fecha }}
+                            {% endif %}
+                        {% else %}
+                            {{ cita.fecha.strftime('%d de %B de %Y') if cita.fecha else 'N/A' }}
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Hora:</span>
+                <span class="info-value">
+                    {% if cita.hora %}
+                        {% if cita.hora is string %}
+                            {% set hora_parts = cita.hora.split(':') %}
+                            {% if hora_parts|length >= 2 %}
+                                {% set hora_num = hora_parts[0]|int %}
+                                {% set minuto = hora_parts[1] %}
+                                {% if hora_num >= 12 %}
+                                    {% set ampm = 'PM' %}
+                                    {% set hora12 = hora_num - 12 if hora_num > 12 else 12 %}
+                                {% else %}
+                                    {% set ampm = 'AM' %}
+                                    {% set hora12 = hora_num if hora_num > 0 else 12 %}
+                                {% endif %}
+                                {{ hora12 }}:{{ minuto }} {{ ampm }}
+                            {% else %}
+                                {{ cita.hora }}
+                            {% endif %}
+                        {% else %}
+                            {{ cita.hora.strftime('%I:%M %p') if cita.hora else 'N/A' }}
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Teléfono:</span>
+                <span class="info-value">{{ cita.telefono }}</span>
+            </div>
+        </div>
+        
+        <div class="highlight">
+            📅 Su cita está confirmada
+        </div>
+        
+        <div class="contact-info">
+            <h3>📞 Información de Contacto</h3>
+            <div class="contact-item">
+                <span class="contact-icon">📍</span>
+                <div class="contact-text">
+                    <strong>Dirección:</strong><br>
+                    Cto. Aconcagua 3008, Las Cumbres, 22545 Tijuana, B.C.
+                </div>
+            </div>
+            <div class="contact-item">
+                <span class="contact-icon">📱</span>
+                <div class="contact-text">
+                    <strong>Teléfono:</strong> (664) 525-7927
+                </div>
+            </div>
+            <div class="contact-item">
+                <span class="contact-icon">✉️</span>
+                <div class="contact-text">
+                    <strong>Correo electrónico:</strong> contacto@serviciohernandez.com
+                </div>
+            </div>
+            <a href="https://www.google.com/maps/search/?api=1&query=Cto.+Aconcagua+3008,+Las+Cumbres,+22545+Tijuana,+B.C." 
+               target="_blank" 
+               class="map-link">
+                🗺️ Abrir en Google Maps
+            </a>
+        </div>
+        
+        <div class="hours-box">
+            <strong>🕐 Horarios de Atención:</strong><br>
+            Lunes a Viernes: 7:00 AM - 5:00 PM<br>
+            Sábados: 8:00 AM - 2:00 PM<br>
+            Domingos: Cerrado
+        </div>
+        
+        <div class="instructions-box">
+            <h3>📋 Instrucciones para su Cita</h3>
+            <ul>
+                <li><strong>Llegue 10 minutos antes</strong> de su hora programada para completar el registro</li>
+                <li>Traiga <strong>documentación del vehículo</strong> (tarjeta de circulación, licencia de conducir)</li>
+                <li>Si es posible, traiga el <strong>historial de mantenimiento</strong> del vehículo</li>
+                <li>Mencione cualquier <strong>síntoma o problema</strong> que haya notado con su vehículo</li>
+                <li>Nuestro equipo le dará una <strong>evaluación detallada</strong> antes de realizar cualquier trabajo</li>
+            </ul>
+        </div>
+        
+        <div class="note">
+            <strong>📌 Nota importante:</strong><br>
+            Si necesita cancelar o reprogramar su cita, por favor contáctenos con al menos 24 horas de anticipación al teléfono (664) 525-7927 o al correo contacto@serviciohernandez.com. Esto nos permite ofrecer el horario a otros clientes.
+        </div>
+        
+        <div class="highlight">
+            🚗 ¡Gracias por confiar en nuestros servicios!<br>
+            <span style="font-size: 14px;">Estamos comprometidos con brindarle el mejor servicio para su vehículo.</span>
+        </div>
+        
+        <p style="text-align: center; margin-top: 20px;">
+            <strong>¡Esperamos atenderle pronto!</strong><br>
+            <em>Equipo del Taller Automotriz</em>
+        </p>
+        
+        <div class="footer">
+            <p><strong>Taller Automotriz</strong></p>
+            <p>Este es un correo automático, por favor no responda a este mensaje.</p>
+            <p>Si tiene alguna pregunta, contáctenos a través de nuestros canales oficiales.</p>
+        </div>
+    </div>
+</body>
+</html>
+

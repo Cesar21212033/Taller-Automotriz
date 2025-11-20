@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - Servicio Automotriz{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 100px auto;
+        padding: 30px;
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .login-container h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+    .button-container {
+        text-align: center;
+    }
+    .button-container button {
+        background-color: #333;
+        color: #fff;
+        padding: 12px 30px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        transition: background-color 0.3s ease;
+    }
+    .button-container button:hover {
+        background-color: #555;
+    }
+    .back-link {
+        text-align: center;
+        margin-top: 15px;
+    }
+    .back-link a {
+        color: #333;
+        text-decoration: none;
+    }
+    .back-link a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h2>Iniciar Sesión</h2>
+    
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="username">Usuario:</label>
+            <input type="text" id="username" name="username" required autofocus>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Contraseña:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="button-container">
+            <button type="submit">Iniciar Sesión</button>
+        </div>
+    </form>
+    
+    <div class="back-link">
+        <a href="{{ url_for('index') }}">← Volver al inicio</a>
+    </div>
+</div>
+{% endblock %}
+

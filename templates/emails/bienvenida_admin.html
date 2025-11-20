@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido al Sistema</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .credentials {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        .credentials strong {
+            color: #2c3e50;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚗 Taller Automotriz</h1>
+        <p>Sistema de Gestión</p>
+    </div>
+    
+    <div class="content">
+        <h2>¡Bienvenido, {{ nombre }}!</h2>
+        
+        <p>Te damos la bienvenida al Sistema de Gestión del Taller Automotriz.</p>
+        
+        <p>Has sido registrado como <strong>Administrador</strong> del sistema. A continuación, encontrarás tus credenciales de acceso:</p>
+        
+        <div class="credentials">
+            <p><strong>Usuario:</strong> {{ username }}</p>
+            <p><strong>Contraseña:</strong> {{ password }}</p>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ IMPORTANTE:</strong> Por seguridad, te recomendamos cambiar tu contraseña después del primer acceso al sistema.
+        </div>
+        
+        <p>Con tu cuenta de administrador podrás:</p>
+        <ul>
+            <li>Gestionar usuarios del sistema</li>
+            <li>Administrar servicios y precios</li>
+            <li>Ver y gestionar cotizaciones</li>
+            <li>Acceder a todas las funcionalidades del panel administrativo</li>
+        </ul>
+        
+        <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
+        
+        <p>¡Esperamos que disfrutes usando nuestro sistema!</p>
+        
+        <p>Saludos cordiales,<br>
+        <strong>Equipo del Taller Automotriz</strong></p>
+    </div>
+    
+    <div class="footer">
+        <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+        <p>&copy; 2025 Taller Automotriz. Todos los derechos reservados.</p>
+    </div>
+</body>
+</html>
+

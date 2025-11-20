@@ -1,0 +1,129 @@
+{% extends "usuario/base.html" %}
+
+{% block title %}Mi Panel - Dashboard{% endblock %}
+
+{% block user_content %}
+<h2>Resumen de Actividad</h2>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>Mis Citas</h3>
+        <p class="stat-number">{{ total_citas }}</p>
+        <a href="{{ url_for('user_citas') }}" class="stat-card-link">Ver todas</a>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Mis Cotizaciones</h3>
+        <p class="stat-number">{{ total_cotizaciones }}</p>
+        <a href="{{ url_for('user_cotizaciones') }}" class="stat-card-link">Ver todas</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="dashboard-section">
+        <h3>Últimas Citas</h3>
+        {% if ultimas_citas %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Servicio</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cita in ultimas_citas %}
+                            <tr>
+                                <td>{{ cita.servicio }}</td>
+                                <td>{{ cita.fecha }}</td>
+                                <td>
+                                    {% if cita.hora %}
+                                        {% if cita.hora is string %}
+                                            {{ cita.hora }}
+                                        {% else %}
+                                            {% set h = cita.hora.hour %}
+                                            {% set m = cita.hora.minute %}
+                                            {% if h == 0 %}
+                                                {% set hora12 = 12 %}
+                                                {% set ampm = 'AM' %}
+                                            {% elif h < 12 %}
+                                                {% set hora12 = h %}
+                                                {% set ampm = 'AM' %}
+                                            {% elif h == 12 %}
+                                                {% set hora12 = 12 %}
+                                                {% set ampm = 'PM' %}
+                                            {% else %}
+                                                {% set hora12 = h - 12 %}
+                                                {% set ampm = 'PM' %}
+                                            {% endif %}
+                                            {{ "%d:%02d %s"|format(hora12, m, ampm) }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="estatus-badge estatus-{{ cita.estatus|lower|replace(' ', '-') if cita.estatus else 'pendiente' }}">
+                                        {{ cita.estatus or 'Pendiente' }}
+                                    </span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-center mt-10">
+                <a href="{{ url_for('user_citas') }}">Ver todas mis citas →</a>
+            </p>
+        {% else %}
+            <p class="text-center text-muted table-empty">
+                No tienes citas registradas.<br>
+                <a href="{{ url_for('citas') }}">Agendar una cita</a>
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-section">
+        <h3>Últimas Cotizaciones</h3>
+        {% if ultimas_cotizaciones %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Servicio</th>
+                            <th>Fecha</th>
+                            <th>Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cotizacion in ultimas_cotizaciones %}
+                            <tr>
+                                <td>{{ cotizacion.servicio_nombre or cotizacion.servicio }}</td>
+                                <td>{{ cotizacion.fecha_envio.strftime('%d/%m/%Y') if cotizacion.fecha_envio else 'N/A' }}</td>
+                                <td>
+                                    {% if cotizacion.precio_calculado %}
+                                        <strong>${{ "%.2f"|format(cotizacion.precio_calculado) }}</strong>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-center mt-10">
+                <a href="{{ url_for('user_cotizaciones') }}">Ver todas mis cotizaciones →</a>
+            </p>
+        {% else %}
+            <p class="text-center text-muted table-empty">
+                No tienes cotizaciones registradas.<br>
+                <a href="{{ url_for('cotizaciones') }}">Solicitar una cotización</a>
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

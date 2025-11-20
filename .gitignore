@@ -43,6 +43,5 @@ Thumbs.db
 
 # Archivos antiguos PHP (ya migrados a Flask)
 *.php
-*.html
 dompdf/
 vendor/

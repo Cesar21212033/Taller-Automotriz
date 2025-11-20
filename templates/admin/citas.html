@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Gestión de Citas{% endblock %}
+
+{% block content %}
+<h2>Gestión de Citas</h2>
+<p class="mb-20 text-muted">
+    Visualiza y gestiona todas las citas agendadas por los clientes.
+</p>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Servicio</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Estatus</th>
+                <th>Fecha Registro</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if citas %}
+                {% for cita in citas %}
+                    <tr>
+                        <td>{{ cita.id }}</td>
+                        <td>{{ cita.nombre }}</td>
+                        <td>
+                            <div>{{ cita.telefono }}</div>
+                            <div style="font-size: 12px; color: #666;">{{ cita.email }}</div>
+                        </td>
+                        <td>{{ cita.servicio }}</td>
+                        <td>{{ cita.fecha }}</td>
+                        <td>
+                            {% if cita.hora %}
+                                {% if cita.hora is string %}
+                                    {{ cita.hora }}
+                                {% else %}
+                                    {% set h = cita.hora.hour %}
+                                    {% set m = cita.hora.minute %}
+                                    {% if h == 0 %}
+                                        {% set hora12 = 12 %}
+                                        {% set ampm = 'AM' %}
+                                    {% elif h < 12 %}
+                                        {% set hora12 = h %}
+                                        {% set ampm = 'AM' %}
+                                    {% elif h == 12 %}
+                                        {% set hora12 = 12 %}
+                                        {% set ampm = 'PM' %}
+                                    {% else %}
+                                        {% set hora12 = h - 12 %}
+                                        {% set ampm = 'PM' %}
+                                    {% endif %}
+                                    {{ "%d:%02d %s"|format(hora12, m, ampm) }}
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" style="display: inline-block; margin-bottom: 5px;">
+                                <input type="hidden" name="accion" value="cambiar_estatus">
+                                <input type="hidden" name="id" value="{{ cita.id }}">
+                                <select name="estatus" onchange="this.form.submit()" class="estatus-select" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
+                                    <option value="Pendiente" {% if cita.estatus == 'Pendiente' or not cita.estatus %}selected{% endif %}>Pendiente</option>
+                                    <option value="Confirmada" {% if cita.estatus == 'Confirmada' %}selected{% endif %}>Confirmada</option>
+                                    <option value="En proceso" {% if cita.estatus == 'En proceso' %}selected{% endif %}>En proceso</option>
+                                    <option value="Completada" {% if cita.estatus == 'Completada' %}selected{% endif %}>Completada</option>
+                                    <option value="Cancelada" {% if cita.estatus == 'Cancelada' %}selected{% endif %}>Cancelada</option>
+                                </select>
+                            </form>
+                            <span class="estatus-badge estatus-{{ cita.estatus|lower|replace(' ', '-') if cita.estatus else 'pendiente' }}">
+                                {{ cita.estatus or 'Pendiente' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if cita.fecha_registro %}
+                                {{ cita.fecha_registro.strftime('%d/%m/%Y %H:%M') if cita.fecha_registro else 'N/A' }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar esta cita?');">
+                                <input type="hidden" name="accion" value="eliminar">
+                                <input type="hidden" name="id" value="{{ cita.id }}">
+                                <button type="submit" class="btn-danger btn-sm">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="9" class="table-empty">
+                        No hay citas registradas
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tablas.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/estatus.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-citas.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/utilidades.css') }}">
+{% endblock %}
+{% endblock %}
+

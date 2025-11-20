@@ -1,0 +1,296 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Gestión de Usuarios{% endblock %}
+
+{% block extra_css %}
+<style>
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+.modal.show { display: block; }
+.modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; }
+.table-container { overflow-x: auto; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; background-color: white; }
+table thead { background-color: #f8f9fa; }
+table th { padding: 12px; text-align: left; font-weight: bold; color: #333; border-bottom: 2px solid #dee2e6; }
+table td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+table tbody tr:hover { background-color: #f8f9fa; }
+.mb-30 { margin-bottom: 30px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Gestión de Usuarios</h2>
+
+<div class="form-container mb-30">
+    <h3>Crear Nuevo Usuario</h3>
+    <form method="POST" action="{{ url_for('admin_usuarios') }}">
+        <input type="hidden" name="accion" value="crear">
+        
+        <div class="form-group">
+            <label for="username">Usuario *</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Contraseña *</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="nombre">Nombre Completo *</label>
+            <input type="text" id="nombre" name="nombre" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email <span id="email_required" class="text-danger d-none">*</span></label>
+            <input type="email" id="email" name="email" onchange="validarEmailAdmin()">
+            <small id="email_help" class="text-muted d-none">El correo es obligatorio para usuarios administradores</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="telefono">Teléfono</label>
+            <input type="text" id="telefono" name="telefono">
+        </div>
+        
+        <div class="form-group">
+            <label for="rol_id">Rol *</label>
+            <select id="rol_id" name="rol_id" required onchange="validarEmailAdmin()">
+                {% for rol in roles %}
+                    <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success" onclick="return validarFormulario()">Crear Usuario</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <h3>Lista de Usuarios</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.id }}</td>
+                    <td>{{ usuario.username }}</td>
+                    <td>{{ usuario.nombre }}</td>
+                    <td>{{ usuario.email or '-' }}</td>
+                    <td>{{ usuario.telefono or '-' }}</td>
+                    <td>{{ usuario.rol_nombre }}</td>
+                    <td>{{ 'Activo' if usuario.activo else 'Inactivo' }}</td>
+                    <td>
+                        <button 
+                            class="btn btn-warning btn-sm" 
+                            onclick="editarUsuario(this)"
+                            data-id="{{ usuario.id }}"
+                            data-nombre="{{ usuario.nombre }}"
+                            data-email="{{ usuario.email or '' }}"
+                            data-telefono="{{ usuario.telefono or '' }}"
+                            data-rol-id="{{ usuario.rol_id }}"
+                            data-activo="{{ 1 if usuario.activo else 0 }}">
+                            Editar
+                        </button>
+                        {% if usuario.id != session.usuario_id %}
+                            <button class="btn btn-danger btn-sm" onclick="eliminarUsuario(this)" data-id="{{ usuario.id }}">Eliminar</button>
+                        {% endif %}
+                        <button class="btn btn-primary btn-sm" onclick="cambiarPassword(this)" data-id="{{ usuario.id }}">Cambiar Contraseña</button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Editar -->
+<div id="modalEditar" class="modal">
+    <div class="modal-content">
+        <h3>Editar Usuario</h3>
+        <form method="POST" action="{{ url_for('admin_usuarios') }}" id="formEditar">
+            <input type="hidden" name="accion" value="editar">
+            <input type="hidden" name="id" id="edit_id">
+            
+            <div class="form-group">
+                <label for="edit_nombre">Nombre Completo *</label>
+                <input type="text" id="edit_nombre" name="nombre" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_email">Email</label>
+                <input type="email" id="edit_email" name="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_telefono">Teléfono</label>
+                <input type="text" id="edit_telefono" name="telefono">
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_rol_id">Rol *</label>
+                <select id="edit_rol_id" name="rol_id" required>
+                    {% for rol in roles %}
+                        <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="edit_activo" name="activo" value="1">
+                    Usuario Activo
+                </label>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">Guardar</button>
+                <button type="button" onclick="cerrarModal()" class="btn btn-primary">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Cambiar Password -->
+<div id="modalPassword" class="modal">
+    <div class="modal-content">
+        <h3>Cambiar Contraseña</h3>
+        <form method="POST" action="{{ url_for('admin_usuarios') }}" id="formPassword">
+            <input type="hidden" name="accion" value="cambiar_password">
+            <input type="hidden" name="id" id="password_id">
+            
+            <div class="form-group">
+                <label for="new_password">Nueva Contraseña *</label>
+                <input type="password" id="new_password" name="password" required>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">Cambiar</button>
+                <button type="button" onclick="cerrarModalPassword()" class="btn btn-primary">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editarUsuario(button) {
+    const usuario = {
+        id: button.getAttribute('data-id'),
+        nombre: button.getAttribute('data-nombre'),
+        email: button.getAttribute('data-email'),
+        telefono: button.getAttribute('data-telefono'),
+        rol_id: button.getAttribute('data-rol-id'),
+        activo: button.getAttribute('data-activo')
+    };
+    
+    document.getElementById('edit_id').value = usuario.id;
+    document.getElementById('edit_nombre').value = usuario.nombre;
+    document.getElementById('edit_email').value = usuario.email || '';
+    document.getElementById('edit_telefono').value = usuario.telefono || '';
+    document.getElementById('edit_rol_id').value = usuario.rol_id;
+    document.getElementById('edit_activo').checked = usuario.activo == 1;
+    
+    document.getElementById('modalEditar').classList.add('show');
+}
+
+function cerrarModal() {
+    document.getElementById('modalEditar').classList.remove('show');
+}
+
+function eliminarUsuario(button) {
+    const id = button.getAttribute('data-id');
+    if (confirm('¿Está seguro de eliminar este usuario?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin_usuarios") }}';
+        form.innerHTML = '<input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="' + id + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function cambiarPassword(button) {
+    const id = button.getAttribute('data-id');
+    document.getElementById('password_id').value = id;
+    document.getElementById('modalPassword').classList.add('show');
+}
+
+function cerrarModalPassword() {
+    document.getElementById('modalPassword').classList.remove('show');
+}
+
+function validarEmailAdmin() {
+    const rolId = document.getElementById('rol_id');
+    const emailInput = document.getElementById('email');
+    const emailRequired = document.getElementById('email_required');
+    const emailHelp = document.getElementById('email_help');
+    
+    if (!rolId || !emailInput) {
+        return;
+    }
+    
+    if (rolId.value == '1') {
+        emailInput.required = true;
+        emailRequired.classList.remove('d-none');
+        emailRequired.classList.add('d-inline');
+        emailHelp.classList.remove('d-none');
+        emailHelp.classList.add('d-block');
+    } else {
+        emailInput.required = false;
+        emailRequired.classList.add('d-none');
+        emailRequired.classList.remove('d-inline');
+        emailHelp.classList.add('d-none');
+        emailHelp.classList.remove('d-block');
+    }
+}
+
+function validarFormulario() {
+    const rolId = document.getElementById('rol_id');
+    const email = document.getElementById('email');
+    
+    if (!rolId || !email) {
+        return true;
+    }
+    
+    if (rolId.value == '1' && !email.value.trim()) {
+        alert('El correo electrónico es obligatorio para usuarios administradores');
+        email.focus();
+        return false;
+    }
+    
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('rol_id')) {
+        validarEmailAdmin();
+    }
+});
+
+window.onclick = function(event) {
+    const modalEditar = document.getElementById('modalEditar');
+    const modalPassword = document.getElementById('modalPassword');
+    
+    if (event.target == modalEditar) cerrarModal();
+    if (event.target == modalPassword) cerrarModalPassword();
+}
+</script>
+<style>
+.d-none { display: none; }
+.d-inline { display: inline; }
+.d-block { display: block; }
+.text-danger { color: #dc3545; }
+.text-muted { color: #666; }
+</style>
+{% endblock %}
+

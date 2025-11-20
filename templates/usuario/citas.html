@@ -1,0 +1,82 @@
+{% extends "usuario/base.html" %}
+
+{% block title %}Mis Citas{% endblock %}
+
+{% block user_content %}
+<h2>Mis Citas</h2>
+    <p class="mb-20 text-muted">
+    Aquí puedes ver todas las citas que has agendado.
+</p>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Servicio</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Estatus</th>
+                <th>Teléfono</th>
+                <th>Fecha de Registro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if citas %}
+                {% for cita in citas %}
+                    <tr>
+                        <td>{{ cita.servicio }}</td>
+                        <td>{{ cita.fecha }}</td>
+                        <td>
+                            {% if cita.hora %}
+                                {% if cita.hora is string %}
+                                    {{ cita.hora }}
+                                {% else %}
+                                    {% set h = cita.hora.hour %}
+                                    {% set m = cita.hora.minute %}
+                                    {% if h == 0 %}
+                                        {% set hora12 = 12 %}
+                                        {% set ampm = 'AM' %}
+                                    {% elif h < 12 %}
+                                        {% set hora12 = h %}
+                                        {% set ampm = 'AM' %}
+                                    {% elif h == 12 %}
+                                        {% set hora12 = 12 %}
+                                        {% set ampm = 'PM' %}
+                                    {% else %}
+                                        {% set hora12 = h - 12 %}
+                                        {% set ampm = 'PM' %}
+                                    {% endif %}
+                                    {{ "%d:%02d %s"|format(hora12, m, ampm) }}
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="estatus-badge estatus-{{ cita.estatus|lower|replace(' ', '-') if cita.estatus else 'pendiente' }}">
+                                {{ cita.estatus or 'Pendiente' }}
+                            </span>
+                        </td>
+                        <td>{{ cita.telefono }}</td>
+                        <td>
+                            {% if cita.fecha_registro %}
+                                {{ cita.fecha_registro.strftime('%d/%m/%Y %H:%M') if cita.fecha_registro else 'N/A' }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="table-empty">
+                        No tienes citas registradas.<br>
+                        <a href="{{ url_for('citas') }}">Agendar una cita</a>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

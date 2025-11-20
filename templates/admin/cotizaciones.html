@@ -1,0 +1,82 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Gestión de Cotizaciones{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tablas.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/utilidades.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/textos.css') }}">
+{% endblock %}
+
+{% block content %}
+<h2>Gestión de Cotizaciones</h2>
+    <p class="mb-20 text-muted">
+    Visualiza y gestiona todas las cotizaciones solicitadas por los clientes.
+</p>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Servicio</th>
+                <th>Vehículo</th>
+                <th>Precio</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if cotizaciones %}
+                {% for cotizacion in cotizaciones %}
+                    <tr>
+                        <td>{{ cotizacion.id }}</td>
+                        <td>{{ cotizacion.nombre }}</td>
+                        <td>
+                            <div>{{ cotizacion.telefono }}</div>
+                            <div class="text-muted text-small">{{ cotizacion.email }}</div>
+                        </td>
+                        <td>{{ cotizacion.servicio_nombre or cotizacion.servicio }}</td>
+                        <td>
+                            {% if cotizacion.marca_vehiculo %}
+                                {{ cotizacion.marca_vehiculo }} {{ cotizacion.modelo_vehiculo }}<br>
+                                <small class="text-muted">{{ cotizacion.anio_vehiculo }} - {{ cotizacion.cilindros }} cil.</small>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cotizacion.precio_calculado %}
+                                <strong>${{ "%.2f"|format(cotizacion.precio_calculado) }}</strong>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>{{ cotizacion.fecha_envio.strftime('%d/%m/%Y') if cotizacion.fecha_envio else 'N/A' }}</td>
+                        <td>
+                            {% if cotizacion.email %}
+                                <form method="POST" action="{{ url_for('admin_cotizaciones') }}" class="d-inline">
+                                    <input type="hidden" name="accion" value="enviar_correo">
+                                    <input type="hidden" name="id" value="{{ cotizacion.id }}">
+                                    <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('¿Enviar cotización por correo a {{ cotizacion.email }}?')">
+                                        📧 Enviar Correo
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-muted text-small" style="opacity: 0.7;">Sin correo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="8" class="table-empty">No hay cotizaciones registradas</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

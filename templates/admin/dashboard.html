@@ -1,0 +1,33 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/usuario.css') }}">
+{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>Usuarios Activos</h3>
+        <p class="stat-number">{{ stats.usuarios }}</p>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Servicios</h3>
+        <p class="stat-number">{{ stats.servicios }}</p>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Citas</h3>
+        <p class="stat-number">{{ stats.citas }}</p>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Cotizaciones</h3>
+        <p class="stat-number">{{ stats.cotizaciones }}</p>
+    </div>
+</div>
+{% endblock %}
+

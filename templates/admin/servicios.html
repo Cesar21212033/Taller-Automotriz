@@ -1,0 +1,136 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Gestión de Servicios{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<h2>Gestión de Servicios</h2>
+
+<div class="form-container mb-30">
+    <h3>Crear Nuevo Servicio</h3>
+    <form method="POST" action="{{ url_for('admin_servicios') }}">
+        <input type="hidden" name="accion" value="crear">
+        
+        <div class="form-group">
+            <label for="nombre">Nombre del Servicio *</label>
+            <input type="text" id="nombre" name="nombre" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="descripcion">Descripción</label>
+            <textarea id="descripcion" name="descripcion" rows="4"></textarea>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">Crear Servicio</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <h3>Lista de Servicios</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if servicios %}
+                {% for servicio in servicios %}
+                    <tr>
+                        <td>{{ servicio.id }}</td>
+                        <td>{{ servicio.nombre }}</td>
+                        <td>{{ servicio.descripcion or '-' }}</td>
+                        <td>
+                            <button onclick="editarServicio({{ servicio|tojson }})" class="btn btn-warning btn-sm">Editar</button>
+                            <button onclick="eliminarServicio({{ servicio.id }})" class="btn btn-danger btn-sm">Eliminar</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" class="table-empty">No hay servicios registrados</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Editar -->
+<div id="modalEditar" class="modal">
+    <div class="modal-content">
+        <h3>Editar Servicio</h3>
+        <form method="POST" action="{{ url_for('admin_servicios') }}" id="formEditar">
+            <input type="hidden" name="accion" value="editar">
+            <input type="hidden" name="id" id="edit_id">
+            
+            <div class="form-group">
+                <label for="edit_nombre">Nombre del Servicio *</label>
+                <input type="text" id="edit_nombre" name="nombre" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit_descripcion">Descripción</label>
+                <textarea id="edit_descripcion" name="descripcion" rows="4"></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">Guardar</button>
+                <button type="button" onclick="cerrarModal()" class="btn btn-primary">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editarServicio(servicio) {
+    document.getElementById('edit_id').value = servicio.id;
+    document.getElementById('edit_nombre').value = servicio.nombre;
+    document.getElementById('edit_descripcion').value = servicio.descripcion || '';
+    
+    document.getElementById('modalEditar').classList.add('show');
+}
+
+function cerrarModal() {
+    document.getElementById('modalEditar').classList.remove('show');
+}
+
+function eliminarServicio(id) {
+    if (confirm('¿Está seguro de eliminar este servicio?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin_servicios") }}';
+        form.innerHTML = '<input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="' + id + '">';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('modalEditar');
+    if (modal && event.target == modal) {
+        cerrarModal();
+    }
+});
+</script>
+<style>
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+.modal.show { display: block; }
+.modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; }
+.table-container { overflow-x: auto; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; background-color: white; }
+table thead { background-color: #f8f9fa; }
+table th { padding: 12px; text-align: left; font-weight: bold; color: #333; border-bottom: 2px solid #dee2e6; }
+table td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+table tbody tr:hover { background-color: #f8f9fa; }
+.table-empty { text-align: center; padding: 20px; color: #666; }
+.mb-30 { margin-bottom: 30px; }
+</style>
+{% endblock %}
+

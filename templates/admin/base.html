@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Panel Administrativo{% endblock %} - Servicio Automotriz</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <img src="{{ url_for('static', filename='imagenes/logo.jpg') }}" width="100px" alt="Logo del negocio">
+            <h1>Panel Administrativo</h1>
+            <div class="user-info">
+                <span>Bienvenido, {{ session.nombre }}</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <nav class="admin-nav">
+            <ul>
+                <li><a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+                <li><a href="{{ url_for('admin_usuarios') }}" {% if request.endpoint == 'admin_usuarios' %}class="active"{% endif %}>Gestión de Usuarios</a></li>
+                <li><a href="{{ url_for('admin_servicios') }}" {% if request.endpoint == 'admin_servicios' %}class="active"{% endif %}>Gestión de Servicios</a></li>
+                <li><a href="{{ url_for('admin_precios') }}" {% if request.endpoint == 'admin_precios' %}class="active"{% endif %}>Precios de Servicios</a></li>
+                <li><a href="{{ url_for('admin_cotizaciones') }}" {% if request.endpoint == 'admin_cotizaciones' %}class="active"{% endif %}>Cotizaciones</a></li>
+                <li><a href="{{ url_for('admin_citas') }}" {% if request.endpoint == 'admin_citas' %}class="active"{% endif %}>Gestión de Citas</a></li>
+                <li><a href="{{ url_for('admin_roles') }}" {% if request.endpoint == 'admin_roles' %}class="active"{% endif %}>Gestión de Roles</a></li>
+                <li><a href="{{ url_for('index') }}">Volver al Sitio</a></li>
+            </ul>
+        </nav>
+
+        <main class="admin-main">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

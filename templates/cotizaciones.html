@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Cotizaciones - Servicio Automotriz{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cotizaciones.css') }}">
+<style>
+/* Utilidades */
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #666;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="form-container">
+    <h2>Solicita una Cotización Personalizada</h2>
+    <p class="text-center text-muted mb-20">
+        Ingresa los datos de tu vehículo para obtener un precio personalizado según el servicio, cilindros y año.
+    </p>
+    
+    <form method="POST" action="{{ url_for('cotizaciones') }}" id="formCotizacion">
+        <div class="form-group">
+            <label for="nombre">Nombre Completo *</label>
+            <input type="text" id="nombre" name="nombre" required>
+        </div>
+
+        <div class="form-group">
+            <label for="telefono">Teléfono *</label>
+            <input type="tel" id="telefono" name="telefono" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Correo Electrónico *</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+            <label for="servicio_id">Servicio *</label>
+            <select id="servicio_id" name="servicio_id" required>
+                <option value="">Seleccione un servicio</option>
+                {% for servicio in servicios %}
+                    <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">Datos del Vehículo</h3>
+
+        <div class="form-group">
+            <label for="marca_vehiculo">Marca del Vehículo *</label>
+            <select id="marca_vehiculo" name="marca_vehiculo" required>
+                <option value="">Seleccione una marca</option>
+                {% for marca in marcas %}
+                    <option value="{{ marca.nombre }}">{{ marca.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="modelo_vehiculo">Modelo del Vehículo</label>
+            <input type="text" id="modelo_vehiculo" name="modelo_vehiculo" placeholder="Ej: Corolla, Civic, etc.">
+        </div>
+
+        <div class="form-group">
+            <label for="año_id">Año del Vehículo *</label>
+            <select id="año_id" name="año_id" required onchange="calcularPrecio()">
+                <option value="">Seleccione un año</option>
+                {% for año in años %}
+                    <option value="{{ año.id }}" data-año="{{ año.año }}">{{ año.año }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="cilindros">Número de Cilindros *</label>
+            <select id="cilindros" name="cilindros" required onchange="calcularPrecio()">
+                <option value="">Seleccione</option>
+                <option value="4">4 Cilindros</option>
+                <option value="6">6 Cilindros</option>
+                <option value="8">8 Cilindros</option>
+                <option value="10">10 Cilindros</option>
+                <option value="12">12 Cilindros</option>
+            </select>
+        </div>
+        
+        <div class="precio-preview" id="precioPreview">
+            <h3>Precio Estimado:</h3>
+            <div class="precio" id="precioCalculado">$0.00</div>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                Este es un precio estimado. El precio final puede variar después de la revisión del vehículo.
+            </p>
+        </div>
+        
+        <div class="form-group">
+            <label for="mensaje">Mensaje o Comentarios Adicionales:</label>
+            <textarea id="mensaje" name="mensaje" rows="4" placeholder="Describe cualquier detalle adicional sobre el servicio que necesitas..."></textarea>
+        </div>
+        
+        <div class="button-container">
+            <button type="submit">Enviar Cotización</button>
+        </div>
+    </form>
+</section>
+
+<script>
+function calcularPrecio() {
+    const servicioSelect = document.getElementById('servicio_id');
+    const añoSelect = document.getElementById('año_id');
+    const cilindrosSelect = document.getElementById('cilindros');
+    const precioPreview = document.getElementById('precioPreview');
+    const precioCalculado = document.getElementById('precioCalculado');
+    
+    const servicioId = servicioSelect.value;
+    const añoOption = añoSelect.options[añoSelect.selectedIndex];
+    const año = añoOption ? añoOption.getAttribute('data-año') : '';
+    const cilindros = cilindrosSelect.value;
+    
+    if (servicioId && año && cilindros) {
+        fetch('{{ url_for("calcular_precio") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `servicio_id=${servicioId}&anio=${año}&cilindros=${cilindros}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.precio) {
+                precioCalculado.textContent = '$' + parseFloat(data.precio).toFixed(2);
+                precioPreview.classList.add('show');
+            } else {
+                precioPreview.classList.remove('show');
+            }
+        })
+        .catch(error => {
+            console.error('Error al calcular precio:', error);
+            precioPreview.classList.remove('show');
+        });
+    } else {
+        precioPreview.classList.remove('show');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const servicioSelect = document.getElementById('servicio_id');
+    if (servicioSelect) {
+        servicioSelect.addEventListener('change', calcularPrecio);
+    }
+});
+</script>
+{% endblock %}
