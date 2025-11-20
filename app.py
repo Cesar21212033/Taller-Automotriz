@@ -109,6 +109,78 @@ def get_cursor(conn):
         print(f"[ERROR] Error creando cursor: {e}")
         raise
 
+def obtener_o_crear_cliente(cursor, conn, nombre, telefono=None, email=None):
+    """
+    Función helper para obtener un cliente existente o crear uno nuevo.
+    
+    Busca un cliente por email (si se proporciona) o por nombre y teléfono.
+    Si no existe, lo crea. Retorna el ID del cliente.
+    
+    Args:
+        cursor: Cursor de la base de datos
+        conn: Conexión a la base de datos
+        nombre: Nombre del cliente
+        telefono: Teléfono del cliente (opcional)
+        email: Email del cliente (opcional)
+    
+    Returns:
+        int: ID del cliente (existente o recién creado)
+    """
+    cliente_id = None
+    
+    # Intentar buscar por email primero (más confiable)
+    if email:
+        try:
+            cursor.execute("SELECT id FROM clientes WHERE correo = %s", (email,))
+            cliente_existente = cursor.fetchone()
+            if cliente_existente:
+                cliente_id = cliente_existente['id']
+                # Actualizar datos si han cambiado
+                cursor.execute("UPDATE clientes SET nombre = %s, telefono = %s WHERE id = %s",
+                             (nombre, telefono, cliente_id))
+                conn.commit()
+                return cliente_id
+        except Error as e:
+            print(f"[ERROR] Error buscando cliente por email: {e}")
+    
+    # Si no se encontró por email, buscar por nombre y teléfono
+    if not cliente_id and nombre and telefono:
+        try:
+            cursor.execute("SELECT id FROM clientes WHERE nombre = %s AND telefono = %s",
+                         (nombre, telefono))
+            cliente_existente = cursor.fetchone()
+            if cliente_existente:
+                cliente_id = cliente_existente['id']
+                # Actualizar email si se proporciona y no existe
+                if email:
+                    cursor.execute("UPDATE clientes SET correo = %s WHERE id = %s",
+                                 (email, cliente_id))
+                    conn.commit()
+                return cliente_id
+        except Error as e:
+            print(f"[ERROR] Error buscando cliente por nombre/teléfono: {e}")
+    
+    # Si no existe, crear nuevo cliente
+    if not cliente_id:
+        try:
+            cursor.execute("INSERT INTO clientes (nombre, telefono, correo) VALUES (%s, %s, %s)",
+                         (nombre, telefono, email))
+            cliente_id = cursor.lastrowid
+            conn.commit()
+        except Error as e:
+            print(f"[ERROR] Error creando cliente: {e}")
+            # Si falla por email duplicado, intentar obtener el existente
+            if email:
+                try:
+                    cursor.execute("SELECT id FROM clientes WHERE correo = %s", (email,))
+                    cliente_existente = cursor.fetchone()
+                    if cliente_existente:
+                        cliente_id = cliente_existente['id']
+                except Error:
+                    pass
+    
+    return cliente_id
+
 # ============================================
 # DECORADORES DE AUTENTICACIÓN
 # ============================================
@@ -305,27 +377,22 @@ def cotizaciones():
                     # Calcular precio personalizado
                     precio_calculado = calcular_precio_servicio(cursor, servicio_id, cilindros_int, año)
                     
-                    # Insertar cotización
+                    # Obtener o crear cliente
+                    cliente_id = obtener_o_crear_cliente(cursor, conn, nombre, telefono, email)
+                    
+                    # Insertar cotización con relación a cliente
                     sql = """INSERT INTO cotizaciones 
-                             (nombre, telefono, email, servicio, servicio_id, 
+                             (nombre, telefono, email, cliente_id, servicio, servicio_id, 
                               marca_vehiculo, marca_id, modelo_vehiculo, 
                               anio_vehiculo, año_id, cilindros, mensaje, precio_calculado) 
-                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
                     cursor.execute(sql, (
-                        nombre, telefono, email, servicio_nombre, servicio_id,
+                        nombre, telefono, email, cliente_id, servicio_nombre, servicio_id,
                         marca_vehiculo, marca_id, modelo_vehiculo,
                         año, año_id, cilindros_int, mensaje, precio_calculado
                     ))
                     cotizacion_id = cursor.lastrowid
                     conn.commit()
-                    
-                    # Guardar también como cliente si no existe
-                    cursor.execute("SELECT id FROM clientes WHERE correo = %s", (email,))
-                    cliente_existente = cursor.fetchone()
-                    if not cliente_existente:
-                        cursor.execute("INSERT INTO clientes (nombre, telefono, correo) VALUES (%s, %s, %s)",
-                                     (nombre, telefono, email))
-                        conn.commit()
                     
                     # Enviar correo automáticamente al cliente
                     try:
@@ -760,9 +827,16 @@ def citas():
                         servicio_data = cursor.fetchone()
                         servicio_nombre = servicio_data['nombre'] if servicio_data else servicio_id
                         
-                        sql = """INSERT INTO citas (nombre, telefono, email, fecha, hora, servicio, estatus) 
-                                 VALUES (%s, %s, %s, %s, %s, %s, 'Pendiente')"""
-                        cursor.execute(sql, (nombre, telefono, email, fecha, hora, servicio_nombre))
+                        # Obtener o crear cliente
+                        cliente_id = obtener_o_crear_cliente(cursor, conn, nombre, telefono, email)
+                        
+                        # Obtener usuario_id si está logueado
+                        usuario_id = session.get('usuario_id', None)
+                        
+                        # Insertar cita con relaciones
+                        sql = """INSERT INTO citas (nombre, telefono, email, cliente_id, fecha, hora, servicio, servicio_id, usuario_id, estatus) 
+                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente')"""
+                        cursor.execute(sql, (nombre, telefono, email, cliente_id, fecha, hora, servicio_nombre, int(servicio_id), usuario_id))
                         cita_id = cursor.lastrowid
                         conn.commit()
                         
@@ -950,7 +1024,9 @@ def user_dashboard():
         
         try:
             # Contar citas del usuario (por email)
-            cursor.execute("SELECT COUNT(*) as total FROM citas WHERE email = %s", (usuario_email,))
+            cursor.execute("""SELECT COUNT(*) as total FROM citas c
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                             WHERE cl.correo = %s OR c.email = %s""", (usuario_email, usuario_email))
             result = cursor.fetchone()
             total_citas = result['total'] if result else 0
         except Error as e:
@@ -959,7 +1035,9 @@ def user_dashboard():
         
         try:
             # Contar cotizaciones del usuario (por email)
-            cursor.execute("SELECT COUNT(*) as total FROM cotizaciones WHERE email = %s", (usuario_email,))
+            cursor.execute("""SELECT COUNT(*) as total FROM cotizaciones c
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                             WHERE cl.correo = %s OR c.email = %s""", (usuario_email, usuario_email))
             result = cursor.fetchone()
             total_cotizaciones = result['total'] if result else 0
         except Error as e:
@@ -967,11 +1045,15 @@ def user_dashboard():
             total_cotizaciones = 0
         
         try:
-            # Obtener últimas citas
-            cursor.execute("""SELECT * FROM citas 
-                             WHERE email = %s 
-                             ORDER BY fecha DESC, hora DESC 
-                             LIMIT 5""", (usuario_email,))
+            # Obtener últimas citas con JOINs
+            cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
+                             cl.correo as cliente_correo, s.nombre as servicio_nombre_completo
+                             FROM citas c
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                             LEFT JOIN servicios s ON c.servicio_id = s.id
+                             WHERE cl.correo = %s OR c.email = %s
+                             ORDER BY c.fecha DESC, c.hora DESC 
+                             LIMIT 5""", (usuario_email, usuario_email))
             ultimas_citas = cursor.fetchall()
             
             # Convertir horas de timedelta a time
@@ -990,12 +1072,14 @@ def user_dashboard():
         
         try:
             # Obtener últimas cotizaciones
-            cursor.execute("""SELECT c.*, s.nombre as servicio_nombre 
+            cursor.execute("""SELECT c.*, s.nombre as servicio_nombre,
+                             cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, cl.correo as cliente_correo
                              FROM cotizaciones c 
-                             LEFT JOIN servicios s ON c.servicio_id = s.id 
-                             WHERE c.email = %s 
+                             LEFT JOIN servicios s ON c.servicio_id = s.id
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                             WHERE cl.correo = %s OR c.email = %s 
                              ORDER BY c.fecha_envio DESC 
-                             LIMIT 5""", (usuario_email,))
+                             LIMIT 5""", (usuario_email, usuario_email))
             ultimas_cotizaciones = cursor.fetchall()
         except Error as e:
             print(f"[ERROR] Error obteniendo últimas cotizaciones: {e}")
@@ -1045,9 +1129,13 @@ def user_citas():
     
     try:
         cursor = get_cursor(conn)
-        cursor.execute("""SELECT * FROM citas 
-                         WHERE email = %s 
-                         ORDER BY fecha DESC, hora DESC""", (usuario_email,))
+        cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
+                         cl.correo as cliente_correo, s.nombre as servicio_nombre_completo
+                         FROM citas c
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                         LEFT JOIN servicios s ON c.servicio_id = s.id
+                         WHERE cl.correo = %s OR c.email = %s
+                         ORDER BY c.fecha DESC, c.hora DESC""", (usuario_email, usuario_email))
         citas = cursor.fetchall()
         
         # Convertir horas de timedelta a time
@@ -1111,11 +1199,13 @@ def user_cotizaciones():
     
     try:
         cursor = get_cursor(conn)
-        cursor.execute("""SELECT c.*, s.nombre as servicio_nombre 
+        cursor.execute("""SELECT c.*, s.nombre as servicio_nombre, 
+                         cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, cl.correo as cliente_correo
                          FROM cotizaciones c 
-                         LEFT JOIN servicios s ON c.servicio_id = s.id 
-                         WHERE c.email = %s 
-                         ORDER BY c.fecha_envio DESC""", (usuario_email,))
+                         LEFT JOIN servicios s ON c.servicio_id = s.id
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                         WHERE cl.correo = %s OR c.email = %s 
+                         ORDER BY c.fecha_envio DESC""", (usuario_email, usuario_email))
         cotizaciones = cursor.fetchall()
         
         return render_template('usuario/cotizaciones.html', cotizaciones=cotizaciones)
@@ -1696,7 +1786,12 @@ def enviar_confirmacion_cita(cita_id):
     
     try:
         cursor = get_cursor(conn)
-        cursor.execute("SELECT * FROM citas WHERE id = %s", (cita_id,))
+        cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
+                         cl.correo as cliente_correo, s.nombre as servicio_nombre_completo
+                         FROM citas c
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                         LEFT JOIN servicios s ON c.servicio_id = s.id
+                         WHERE c.id = %s""", (cita_id,))
         cita = cursor.fetchone()
         
         if not cita:
@@ -1920,9 +2015,15 @@ def admin_citas():
                 except Error as e:
                     flash(f'Error al actualizar el estatus: {str(e)}', 'danger')
         
-        # Obtener citas ordenadas por fecha y hora
-        cursor.execute("""SELECT * FROM citas 
-                         ORDER BY fecha DESC, hora DESC""")
+        # Obtener citas ordenadas por fecha y hora con JOINs
+        cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
+                         cl.correo as cliente_correo, s.nombre as servicio_nombre_completo,
+                         u.nombre as usuario_nombre
+                         FROM citas c
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                         LEFT JOIN servicios s ON c.servicio_id = s.id
+                         LEFT JOIN usuarios u ON c.usuario_id = u.id
+                         ORDER BY c.fecha DESC, c.hora DESC""")
         citas = cursor.fetchall()
         
         # Convertir horas de timedelta a time si es necesario

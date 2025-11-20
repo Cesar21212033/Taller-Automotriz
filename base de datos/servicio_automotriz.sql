@@ -137,6 +137,19 @@ CREATE TABLE años_vehiculos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================
+-- TABLA: clientes
+-- ============================================
+DROP TABLE IF EXISTS clientes;
+CREATE TABLE clientes (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  nombre VARCHAR(100) NOT NULL,
+  telefono VARCHAR(20) DEFAULT NULL,
+  correo VARCHAR(100) DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_clientes_correo (correo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================
 -- TABLA: cotizaciones
 -- ============================================
 DROP TABLE IF EXISTS cotizaciones;
@@ -145,6 +158,7 @@ CREATE TABLE cotizaciones (
   nombre VARCHAR(100) NOT NULL,
   telefono VARCHAR(20) NOT NULL,
   email VARCHAR(100) NOT NULL,
+  cliente_id INT(11) DEFAULT NULL,
   servicio VARCHAR(100) NOT NULL,
   servicio_id INT(11) DEFAULT NULL,
   marca_vehiculo VARCHAR(50) DEFAULT NULL,
@@ -157,9 +171,15 @@ CREATE TABLE cotizaciones (
   precio_calculado DECIMAL(10,2) DEFAULT NULL,
   fecha_envio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
+  KEY idx_cotizaciones_cliente (cliente_id),
   KEY idx_cotizaciones_servicio (servicio_id),
   KEY idx_cotizaciones_marca (marca_id),
   KEY idx_cotizaciones_año (año_id),
+  CONSTRAINT fk_cotizaciones_cliente 
+    FOREIGN KEY (cliente_id) 
+    REFERENCES clientes (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
   CONSTRAINT fk_cotizaciones_servicio 
     FOREIGN KEY (servicio_id) 
     REFERENCES servicios (id) 
@@ -186,23 +206,32 @@ CREATE TABLE citas (
   nombre VARCHAR(100) DEFAULT NULL,
   telefono VARCHAR(20) DEFAULT NULL,
   email VARCHAR(100) DEFAULT NULL,
+  cliente_id INT(11) DEFAULT NULL,
   fecha DATE DEFAULT NULL,
   hora TIME DEFAULT NULL,
   servicio VARCHAR(100) DEFAULT NULL,
+  servicio_id INT(11) DEFAULT NULL,
+  usuario_id INT(11) DEFAULT NULL,
   fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- ============================================
--- TABLA: clientes
--- ============================================
-DROP TABLE IF EXISTS clientes;
-CREATE TABLE clientes (
-  id INT(11) NOT NULL AUTO_INCREMENT,
-  nombre VARCHAR(100) NOT NULL,
-  telefono VARCHAR(20) DEFAULT NULL,
-  correo VARCHAR(100) DEFAULT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  KEY idx_citas_cliente (cliente_id),
+  KEY idx_citas_servicio (servicio_id),
+  KEY idx_citas_usuario (usuario_id),
+  CONSTRAINT fk_citas_cliente 
+    FOREIGN KEY (cliente_id) 
+    REFERENCES clientes (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_citas_servicio 
+    FOREIGN KEY (servicio_id) 
+    REFERENCES servicios (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_citas_usuario 
+    FOREIGN KEY (usuario_id) 
+    REFERENCES usuarios (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================
@@ -216,17 +245,45 @@ CREATE TABLE presupuestos (
   validez VARCHAR(50) DEFAULT NULL,
   cliente_nombre VARCHAR(100) DEFAULT NULL,
   telefono_cliente VARCHAR(20) DEFAULT NULL,
+  cliente_id INT(11) DEFAULT NULL,
   marca_vehiculo VARCHAR(50) DEFAULT NULL,
+  marca_id INT(11) DEFAULT NULL,
   modelo_vehiculo VARCHAR(50) DEFAULT NULL,
   anio_vehiculo VARCHAR(10) DEFAULT NULL,
+  año_id INT(11) DEFAULT NULL,
   kilometraje VARCHAR(20) DEFAULT NULL,
   motor VARCHAR(50) DEFAULT NULL,
   observaciones TEXT DEFAULT NULL,
   subtotal DECIMAL(10,2) DEFAULT NULL,
   total DECIMAL(10,2) DEFAULT NULL,
+  usuario_id INT(11) DEFAULT NULL,
   fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_presupuestos_numero (numero_presupuesto)
+  UNIQUE KEY uk_presupuestos_numero (numero_presupuesto),
+  KEY idx_presupuestos_cliente (cliente_id),
+  KEY idx_presupuestos_marca (marca_id),
+  KEY idx_presupuestos_año (año_id),
+  KEY idx_presupuestos_usuario (usuario_id),
+  CONSTRAINT fk_presupuestos_cliente 
+    FOREIGN KEY (cliente_id) 
+    REFERENCES clientes (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_presupuestos_marca 
+    FOREIGN KEY (marca_id) 
+    REFERENCES marcas_vehiculos (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_presupuestos_año 
+    FOREIGN KEY (año_id) 
+    REFERENCES años_vehiculos (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_presupuestos_usuario 
+    FOREIGN KEY (usuario_id) 
+    REFERENCES usuarios (id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================
