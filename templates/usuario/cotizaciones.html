@@ -3,63 +3,270 @@
 {% block title %}Mis Cotizaciones{% endblock %}
 
 {% block user_content %}
-<h2>Mis Cotizaciones</h2>
-    <p class="mb-20 text-muted">
-    Aquí puedes ver todas las cotizaciones que has solicitado.
-</p>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2>Mis Cotizaciones</h2>
+        <p class="mb-20 text-muted" style="margin-bottom: 0;">
+            Aquí puedes ver y gestionar todas las cotizaciones que has solicitado.
+        </p>
+    </div>
+    <a href="{{ url_for('cotizaciones') }}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+        + Nueva Cotización
+    </a>
+</div>
 
+{% if cotizaciones %}
 <div class="table-container">
     <table>
         <thead>
             <tr>
+                <th>#</th>
                 <th>Servicio</th>
                 <th>Vehículo</th>
-                <th>Precio</th>
+                <th>Precio Estimado</th>
                 <th>Fecha</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
-            {% if cotizaciones %}
-                {% for cotizacion in cotizaciones %}
-                    <tr>
-                        <td>{{ cotizacion.servicio_nombre or cotizacion.servicio }}</td>
-                        <td>
-                            {% if cotizacion.marca_vehiculo %}
-                                {{ cotizacion.marca_vehiculo }}
-                                {% if cotizacion.modelo_vehiculo %}
-                                    {{ cotizacion.modelo_vehiculo }}
-                                {% endif %}
-                                <br>
-                                <small class="text-muted">
-                                    {{ cotizacion.anio_vehiculo if cotizacion.anio_vehiculo else '' }}
-                                    {% if cotizacion.cilindros %}
-                                        - {{ cotizacion.cilindros }} cil.
-                                    {% endif %}
-                                </small>
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if cotizacion.precio_calculado %}
-                                <strong>${{ "%.2f"|format(cotizacion.precio_calculado) }}</strong>
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        </td>
-                        <td>{{ cotizacion.fecha_envio.strftime('%d/%m/%Y') if cotizacion.fecha_envio else 'N/A' }}</td>
-                    </tr>
-                {% endfor %}
-            {% else %}
+            {% for cotizacion in cotizaciones %}
                 <tr>
-                    <td colspan="4" class="table-empty">
-                        No tienes cotizaciones registradas.<br>
-                        <a href="{{ url_for('cotizaciones') }}">Solicitar una cotización</a>
+                    <td>{{ cotizacion.cotizacion_id }}</td>
+                    <td>
+                        {% if cotizacion.servicios_relacionados and cotizacion.servicios_relacionados|length > 0 %}
+                            <div>
+                                {% for servicio in cotizacion.servicios_relacionados %}
+                                    <div style="margin-bottom: 5px;">
+                                        <span style="display: inline-block; background-color: #e7f3ff; padding: 4px 8px; border-radius: 4px; margin-right: 5px;">
+                                            <strong>{{ servicio.nombre }}</strong>
+                                        </span>
+                                        {% if servicio.precio_servicio %}
+                                        <span style="color: #28a745; font-size: 0.9em;">${{ "%.2f"|format(servicio.precio_servicio) }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <strong>{{ cotizacion.servicio_nombre or cotizacion.servicio }}</strong>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if cotizacion.marca_vehiculo %}
+                            <strong>{{ cotizacion.marca_vehiculo }}</strong>
+                            {% if cotizacion.modelo_vehiculo %}
+                                {{ cotizacion.modelo_vehiculo }}
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">
+                                Año: {{ cotizacion.anio_vehiculo if cotizacion.anio_vehiculo else 'N/A' }}
+                                {% if cotizacion.cilindros %}
+                                    | {{ cotizacion.cilindros }} cilindros
+                                {% endif %}
+                            </small>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if cotizacion.precio_calculado %}
+                            <strong style="color: #28a745; font-size: 1.1em;">${{ "%.2f"|format(cotizacion.precio_calculado) }}</strong>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ cotizacion.fecha_envio.strftime('%d/%m/%Y') if cotizacion.fecha_envio else 'N/A' }}
+                        <br>
+                        <small class="text-muted">
+                            {{ cotizacion.fecha_envio.strftime('%H:%M') if cotizacion.fecha_envio else '' }}
+                        </small>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            <button onclick="verDetalles({{ cotizacion.cotizacion_id }})" 
+                                    style="background-color: #17a2b8; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;"
+                                    title="Ver detalles">
+                                👁️ Ver
+                            </button>
+                            <button onclick="reenviarCorreo({{ cotizacion.cotizacion_id }})" 
+                                    style="background-color: #ffc107; color: black; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;"
+                                    title="Reenviar por correo">
+                                📧 Reenviar
+                            </button>
+                            <a href="{{ url_for('citas') }}?cotizacion_id={{ cotizacion.cotizacion_id }}" 
+                               style="background-color: #28a745; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none; font-size: 12px; display: inline-block;"
+                               title="Agendar cita para este servicio">
+                                📅 Cita
+                            </a>
+                        </div>
                     </td>
                 </tr>
-            {% endif %}
+            {% endfor %}
         </tbody>
     </table>
 </div>
+
+<!-- Modal para ver detalles -->
+<div id="modalDetalles" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: white; margin: 5% auto; padding: 20px; border-radius: 10px; width: 80%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <span onclick="cerrarModal()" style="float: right; font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa;">&times;</span>
+        <h3>Detalles de la Cotización</h3>
+        <div id="detallesContenido"></div>
+    </div>
+</div>
+
+<script>
+let cotizacionesData = {
+    {% for cotizacion in cotizaciones %}
+    {{ cotizacion.cotizacion_id }}: {
+        servicio: "{{ cotizacion.servicio_nombre or cotizacion.servicio }}",
+        marca: "{{ cotizacion.marca_vehiculo or 'N/A' }}",
+        modelo: "{{ cotizacion.modelo_vehiculo or 'N/A' }}",
+        año: "{{ cotizacion.anio_vehiculo or 'N/A' }}",
+        cilindros: "{{ cotizacion.cilindros or 'N/A' }}",
+        precio: "{{ "%.2f"|format(cotizacion.precio_calculado) if cotizacion.precio_calculado else 'N/A' }}",
+        fecha: "{{ cotizacion.fecha_envio.strftime('%d/%m/%Y %H:%M') if cotizacion.fecha_envio else 'N/A' }}",
+        mensaje: {{ cotizacion.mensaje|tojson if cotizacion.mensaje else 'null' }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+function verDetalles(id) {
+    // Cargar detalles desde el servidor para obtener servicios relacionados
+    fetch(`/usuario/cotizaciones/${id}/detalles`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const cotizacion = data.cotizacion;
+                let serviciosHtml = '';
+                if (cotizacion.servicios && cotizacion.servicios.length > 0) {
+                    serviciosHtml = '<p><strong>Servicios:</strong></p><ul style="margin-left: 20px;">';
+                    cotizacion.servicios.forEach(serv => {
+                        serviciosHtml += `<li><strong>${serv.nombre}</strong> - $${parseFloat(serv.precio || 0).toFixed(2)}</li>`;
+                    });
+                    serviciosHtml += '</ul>';
+                } else {
+                    serviciosHtml = `<p><strong>Servicio:</strong> ${cotizacion.servicio || cotizacion.servicio_nombre || 'N/A'}</p>`;
+                }
+                
+                let html = `
+                    <div style="margin-top: 20px;">
+                        <p><strong>ID Cotización:</strong> #${cotizacion.id || cotizacion.cotizacion_id}</p>
+                        ${serviciosHtml}
+                        <p><strong>Vehículo:</strong> ${cotizacion.marca_vehiculo || 'N/A'} ${cotizacion.modelo_vehiculo || ''}</p>
+                        <p><strong>Año:</strong> ${cotizacion.anio_vehiculo || 'N/A'}</p>
+                        <p><strong>Cilindros:</strong> ${cotizacion.cilindros || 'N/A'}</p>
+                        <p><strong>Precio Total Estimado:</strong> <span style="color: #28a745; font-size: 1.2em; font-weight: bold;">$${parseFloat(cotizacion.precio_calculado || 0).toFixed(2)}</span></p>
+                        <p><strong>Fecha de Solicitud:</strong> ${new Date(cotizacion.fecha_envio).toLocaleDateString('es-MX')}</p>
+                        ${cotizacion.mensaje ? `<p><strong>Comentarios:</strong><br>${cotizacion.mensaje}</p>` : ''}
+                    </div>
+                `;
+                
+                document.getElementById('detallesContenido').innerHTML = html;
+                document.getElementById('modalDetalles').style.display = 'block';
+            } else {
+                alert('Error al cargar la cotización: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cargar la cotización');
+        });
+}
+
+function cerrarModal() {
+    document.getElementById('modalDetalles').style.display = 'none';
+}
+
+function reenviarCorreo(id) {
+    if (confirm('¿Deseas reenviar esta cotización por correo electrónico?')) {
+        fetch('{{ url_for("user_reenviar_cotizacion") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `cotizacion_id=${id}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ Cotización reenviada correctamente');
+            } else {
+                alert('❌ Error al reenviar: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('❌ Error al reenviar la cotización');
+        });
+    }
+}
+
+// Cerrar modal al hacer clic fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('modalDetalles');
+    if (event.target == modal) {
+        cerrarModal();
+    }
+}
+</script>
+
+{% else %}
+<div class="table-container">
+    <div style="text-align: center; padding: 40px;">
+        <p style="font-size: 1.2em; color: #666; margin-bottom: 20px;">
+            No tienes cotizaciones registradas aún.
+        </p>
+        <a href="{{ url_for('cotizaciones') }}" 
+           style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Solicitar mi primera cotización
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.table-container {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background-color: #f8f9fa;
+}
+
+th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+button:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+    transition: all 0.2s;
+}
+</style>
 {% endblock %}
 

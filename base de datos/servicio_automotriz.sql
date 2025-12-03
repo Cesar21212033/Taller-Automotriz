@@ -18,10 +18,10 @@ USE servicio_automotriz;
 -- ============================================
 DROP TABLE IF EXISTS roles;
 CREATE TABLE roles (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  rol_id INT(11) NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(50) NOT NULL,
   descripcion TEXT DEFAULT NULL,
-  PRIMARY KEY (id),
+  PRIMARY KEY (rol_id),
   UNIQUE KEY uk_roles_nombre (nombre)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -34,7 +34,7 @@ INSERT INTO roles (nombre, descripcion) VALUES
 -- ============================================
 DROP TABLE IF EXISTS usuarios;
 CREATE TABLE usuarios (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  usuario_id INT(11) NOT NULL AUTO_INCREMENT,
   username VARCHAR(50) NOT NULL,
   password VARCHAR(255) NOT NULL,
   nombre VARCHAR(100) NOT NULL,
@@ -43,11 +43,11 @@ CREATE TABLE usuarios (
   rol_id INT(11) NOT NULL DEFAULT 2,
   activo TINYINT(1) NOT NULL DEFAULT 1,
   fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+  PRIMARY KEY (usuario_id),
   UNIQUE KEY uk_usuarios_username (username),
   KEY idx_usuarios_rol_id (rol_id),
   CONSTRAINT fk_usuarios_rol FOREIGN KEY (rol_id) 
-    REFERENCES roles (id) 
+    REFERENCES roles (rol_id) 
     ON DELETE RESTRICT 
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -61,13 +61,13 @@ INSERT INTO usuarios (username, password, nombre, email, rol_id) VALUES
 -- ============================================
 DROP TABLE IF EXISTS servicios;
 CREATE TABLE servicios (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  servicio_id INT(11) NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   descripcion TEXT DEFAULT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (servicio_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO servicios (id, nombre, descripcion) VALUES
+INSERT INTO servicios (servicio_id, nombre, descripcion) VALUES
 (1, 'Cambio de Aceite', 'Cambio de aceite y filtro de aceite'),
 (2, 'Reparación de Frenos', 'Reparación y mantenimiento del sistema de frenos'),
 (3, 'Diagnóstico Electrónico', 'Diagnóstico computarizado del vehículo'),
@@ -80,7 +80,7 @@ INSERT INTO servicios (id, nombre, descripcion) VALUES
 -- ============================================
 DROP TABLE IF EXISTS servicio_precios;
 CREATE TABLE servicio_precios (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  servicio_precio_id INT(11) NOT NULL AUTO_INCREMENT,
   servicio_id INT(11) NOT NULL,
   cilindros_min INT(2) NOT NULL,
   cilindros_max INT(2) NOT NULL,
@@ -91,12 +91,12 @@ CREATE TABLE servicio_precios (
   precio_por_anio DECIMAL(10,2) DEFAULT 0.00,
   activo TINYINT(1) NOT NULL DEFAULT 1,
   fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+  PRIMARY KEY (servicio_precio_id),
   KEY idx_servicio_precios_servicio (servicio_id),
   KEY idx_servicio_precios_cilindros (cilindros_min, cilindros_max),
   CONSTRAINT fk_servicio_precios_servicio 
     FOREIGN KEY (servicio_id) 
-    REFERENCES servicios (id) 
+    REFERENCES servicios (servicio_id) 
     ON DELETE CASCADE 
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -116,11 +116,11 @@ INSERT INTO servicio_precios (servicio_id, cilindros_min, cilindros_max, anio_mi
 -- ============================================
 DROP TABLE IF EXISTS marcas_vehiculos;
 CREATE TABLE marcas_vehiculos (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  marca_id INT(11) NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(50) NOT NULL,
   activo TINYINT(1) NOT NULL DEFAULT 1,
   fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+  PRIMARY KEY (marca_id),
   UNIQUE KEY uk_marcas_nombre (nombre)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -129,10 +129,10 @@ CREATE TABLE marcas_vehiculos (
 -- ============================================
 DROP TABLE IF EXISTS años_vehiculos;
 CREATE TABLE años_vehiculos (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  año_id INT(11) NOT NULL AUTO_INCREMENT,
   año INT(4) NOT NULL,
   activo TINYINT(1) NOT NULL DEFAULT 1,
-  PRIMARY KEY (id),
+  PRIMARY KEY (año_id),
   UNIQUE KEY uk_años_año (año)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -141,11 +141,11 @@ CREATE TABLE años_vehiculos (
 -- ============================================
 DROP TABLE IF EXISTS clientes;
 CREATE TABLE clientes (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  cliente_id INT(11) NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   telefono VARCHAR(20) DEFAULT NULL,
   correo VARCHAR(100) DEFAULT NULL,
-  PRIMARY KEY (id),
+  PRIMARY KEY (cliente_id),
   UNIQUE KEY uk_clientes_correo (correo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -154,7 +154,7 @@ CREATE TABLE clientes (
 -- ============================================
 DROP TABLE IF EXISTS cotizaciones;
 CREATE TABLE cotizaciones (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  cotizacion_id INT(11) NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   telefono VARCHAR(20) NOT NULL,
   email VARCHAR(100) NOT NULL,
@@ -170,29 +170,34 @@ CREATE TABLE cotizaciones (
   mensaje TEXT DEFAULT NULL,
   precio_calculado DECIMAL(10,2) DEFAULT NULL,
   fecha_envio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+  usuario_id INT(11) DEFAULT NULL,
+  PRIMARY KEY (cotizacion_id),
   KEY idx_cotizaciones_cliente (cliente_id),
   KEY idx_cotizaciones_servicio (servicio_id),
   KEY idx_cotizaciones_marca (marca_id),
   KEY idx_cotizaciones_año (año_id),
+  KEY idx_cotizaciones_usuario (usuario_id),
   CONSTRAINT fk_cotizaciones_cliente 
     FOREIGN KEY (cliente_id) 
-    REFERENCES clientes (id) 
+    REFERENCES clientes (cliente_id),
+  CONSTRAINT fk_cotizaciones_usuario 
+    FOREIGN KEY (usuario_id) 
+    REFERENCES usuarios (usuario_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_cotizaciones_servicio 
     FOREIGN KEY (servicio_id) 
-    REFERENCES servicios (id) 
+    REFERENCES servicios (servicio_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_cotizaciones_marca 
     FOREIGN KEY (marca_id) 
-    REFERENCES marcas_vehiculos (id) 
+    REFERENCES marcas_vehiculos (marca_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_cotizaciones_año 
     FOREIGN KEY (año_id) 
-    REFERENCES años_vehiculos (id) 
+    REFERENCES años_vehiculos (año_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -202,7 +207,7 @@ CREATE TABLE cotizaciones (
 -- ============================================
 DROP TABLE IF EXISTS citas;
 CREATE TABLE citas (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  cita_id INT(11) NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(100) DEFAULT NULL,
   telefono VARCHAR(20) DEFAULT NULL,
   email VARCHAR(100) DEFAULT NULL,
@@ -212,25 +217,81 @@ CREATE TABLE citas (
   servicio VARCHAR(100) DEFAULT NULL,
   servicio_id INT(11) DEFAULT NULL,
   usuario_id INT(11) DEFAULT NULL,
+  cotizacion_id INT(11) DEFAULT NULL,
   fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+  PRIMARY KEY (cita_id),
   KEY idx_citas_cliente (cliente_id),
   KEY idx_citas_servicio (servicio_id),
   KEY idx_citas_usuario (usuario_id),
+  KEY idx_citas_cotizacion (cotizacion_id),
   CONSTRAINT fk_citas_cliente 
     FOREIGN KEY (cliente_id) 
-    REFERENCES clientes (id) 
+    REFERENCES clientes (cliente_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_citas_servicio 
     FOREIGN KEY (servicio_id) 
-    REFERENCES servicios (id) 
+    REFERENCES servicios (servicio_id) 
+    ON DELETE SET NULL 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_citas_cotizacion 
+    FOREIGN KEY (cotizacion_id) 
+    REFERENCES cotizaciones (cotizacion_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_citas_usuario 
     FOREIGN KEY (usuario_id) 
-    REFERENCES usuarios (id) 
+    REFERENCES usuarios (usuario_id) 
     ON DELETE SET NULL 
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================
+-- TABLA: citas_servicios (Relación muchos-a-muchos)
+-- ============================================
+DROP TABLE IF EXISTS citas_servicios;
+CREATE TABLE citas_servicios (
+  cita_servicio_id INT(11) NOT NULL AUTO_INCREMENT,
+  cita_id INT(11) NOT NULL,
+  servicio_id INT(11) NOT NULL,
+  PRIMARY KEY (cita_servicio_id),
+  UNIQUE KEY uk_cita_servicio (cita_id, servicio_id),
+  KEY idx_citas_servicios_cita (cita_id),
+  KEY idx_citas_servicios_servicio (servicio_id),
+  CONSTRAINT fk_citas_servicios_cita 
+    FOREIGN KEY (cita_id) 
+    REFERENCES citas (cita_id) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_citas_servicios_servicio 
+    FOREIGN KEY (servicio_id) 
+    REFERENCES servicios (servicio_id) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================
+-- TABLA: cotizaciones_servicios (Relación muchos-a-muchos)
+-- ============================================
+DROP TABLE IF EXISTS cotizaciones_servicios;
+CREATE TABLE cotizaciones_servicios (
+  cotizacion_servicio_id INT(11) NOT NULL AUTO_INCREMENT,
+  cotizacion_id INT(11) NOT NULL,
+  servicio_id INT(11) NOT NULL,
+  precio_calculado DECIMAL(10,2) DEFAULT NULL,
+  PRIMARY KEY (cotizacion_servicio_id),
+  UNIQUE KEY uk_cotizacion_servicio (cotizacion_id, servicio_id),
+  KEY idx_cotizaciones_servicios_cotizacion (cotizacion_id),
+  KEY idx_cotizaciones_servicios_servicio (servicio_id),
+  CONSTRAINT fk_cotizaciones_servicios_cotizacion 
+    FOREIGN KEY (cotizacion_id) 
+    REFERENCES cotizaciones (cotizacion_id) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_cotizaciones_servicios_servicio 
+    FOREIGN KEY (servicio_id) 
+    REFERENCES servicios (servicio_id) 
+    ON DELETE CASCADE 
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -239,7 +300,7 @@ CREATE TABLE citas (
 -- ============================================
 DROP TABLE IF EXISTS presupuestos;
 CREATE TABLE presupuestos (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  presupuesto_id INT(11) NOT NULL AUTO_INCREMENT,
   numero_presupuesto VARCHAR(20) DEFAULT NULL,
   fecha DATE DEFAULT NULL,
   validez VARCHAR(50) DEFAULT NULL,
@@ -258,7 +319,7 @@ CREATE TABLE presupuestos (
   total DECIMAL(10,2) DEFAULT NULL,
   usuario_id INT(11) DEFAULT NULL,
   fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+  PRIMARY KEY (presupuesto_id),
   UNIQUE KEY uk_presupuestos_numero (numero_presupuesto),
   KEY idx_presupuestos_cliente (cliente_id),
   KEY idx_presupuestos_marca (marca_id),
@@ -266,22 +327,22 @@ CREATE TABLE presupuestos (
   KEY idx_presupuestos_usuario (usuario_id),
   CONSTRAINT fk_presupuestos_cliente 
     FOREIGN KEY (cliente_id) 
-    REFERENCES clientes (id) 
+    REFERENCES clientes (cliente_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_presupuestos_marca 
     FOREIGN KEY (marca_id) 
-    REFERENCES marcas_vehiculos (id) 
+    REFERENCES marcas_vehiculos (marca_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_presupuestos_año 
     FOREIGN KEY (año_id) 
-    REFERENCES años_vehiculos (id) 
+    REFERENCES años_vehiculos (año_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE,
   CONSTRAINT fk_presupuestos_usuario 
     FOREIGN KEY (usuario_id) 
-    REFERENCES usuarios (id) 
+    REFERENCES usuarios (usuario_id) 
     ON DELETE SET NULL 
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -291,17 +352,17 @@ CREATE TABLE presupuestos (
 -- ============================================
 DROP TABLE IF EXISTS presupuesto_items;
 CREATE TABLE presupuesto_items (
-  id INT(11) NOT NULL AUTO_INCREMENT,
+  presupuesto_item_id INT(11) NOT NULL AUTO_INCREMENT,
   presupuesto_id INT(11) DEFAULT NULL,
   descripcion TEXT DEFAULT NULL,
   cantidad INT(11) DEFAULT 1,
   precio DECIMAL(10,2) DEFAULT NULL,
   importe DECIMAL(10,2) DEFAULT NULL,
-  PRIMARY KEY (id),
+  PRIMARY KEY (presupuesto_item_id),
   KEY idx_presupuesto_items_presupuesto (presupuesto_id),
   CONSTRAINT fk_presupuesto_items_presupuesto 
     FOREIGN KEY (presupuesto_id) 
-    REFERENCES presupuestos (id) 
+    REFERENCES presupuestos (presupuesto_id) 
     ON DELETE CASCADE 
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

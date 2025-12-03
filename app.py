@@ -109,6 +109,36 @@ def get_cursor(conn):
         print(f"[ERROR] Error creando cursor: {e}")
         raise
 
+def obtener_datos_usuario_logueado(cursor, session):
+    """
+    Obtiene los datos del usuario logueado desde la sesión y la base de datos.
+    
+    Returns:
+        dict: Diccionario con id, nombre, email y telefono del usuario, o None si no está logueado
+    """
+    usuario_id = session.get('usuario_id')
+    if not usuario_id:
+        return None
+    
+    usuario_logueado = {
+        'usuario_id': usuario_id,
+        'id': usuario_id,  # Compatibilidad con templates antiguos
+        'nombre': session.get('nombre', ''),
+        'email': session.get('email', ''),
+        'telefono': None
+    }
+    
+    # Obtener teléfono de la BD
+    try:
+        cursor.execute("SELECT telefono FROM usuarios WHERE usuario_id = %s", (usuario_id,))
+        usuario_data = cursor.fetchone()
+        if usuario_data:
+            usuario_logueado['telefono'] = usuario_data.get('telefono', '')
+    except Error:
+        pass
+    
+    return usuario_logueado
+
 def obtener_o_crear_cliente(cursor, conn, nombre, telefono=None, email=None):
     """
     Función helper para obtener un cliente existente o crear uno nuevo.
@@ -131,12 +161,12 @@ def obtener_o_crear_cliente(cursor, conn, nombre, telefono=None, email=None):
     # Intentar buscar por email primero (más confiable)
     if email:
         try:
-            cursor.execute("SELECT id FROM clientes WHERE correo = %s", (email,))
+            cursor.execute("SELECT cliente_id FROM clientes WHERE correo = %s", (email,))
             cliente_existente = cursor.fetchone()
             if cliente_existente:
-                cliente_id = cliente_existente['id']
+                cliente_id = cliente_existente['cliente_id']
                 # Actualizar datos si han cambiado
-                cursor.execute("UPDATE clientes SET nombre = %s, telefono = %s WHERE id = %s",
+                cursor.execute("UPDATE clientes SET nombre = %s, telefono = %s WHERE cliente_id = %s",
                              (nombre, telefono, cliente_id))
                 conn.commit()
                 return cliente_id
@@ -146,14 +176,14 @@ def obtener_o_crear_cliente(cursor, conn, nombre, telefono=None, email=None):
     # Si no se encontró por email, buscar por nombre y teléfono
     if not cliente_id and nombre and telefono:
         try:
-            cursor.execute("SELECT id FROM clientes WHERE nombre = %s AND telefono = %s",
+            cursor.execute("SELECT cliente_id FROM clientes WHERE nombre = %s AND telefono = %s",
                          (nombre, telefono))
             cliente_existente = cursor.fetchone()
             if cliente_existente:
-                cliente_id = cliente_existente['id']
+                cliente_id = cliente_existente['cliente_id']
                 # Actualizar email si se proporciona y no existe
                 if email:
-                    cursor.execute("UPDATE clientes SET correo = %s WHERE id = %s",
+                    cursor.execute("UPDATE clientes SET correo = %s WHERE cliente_id = %s",
                                  (email, cliente_id))
                     conn.commit()
                 return cliente_id
@@ -172,10 +202,10 @@ def obtener_o_crear_cliente(cursor, conn, nombre, telefono=None, email=None):
             # Si falla por email duplicado, intentar obtener el existente
             if email:
                 try:
-                    cursor.execute("SELECT id FROM clientes WHERE correo = %s", (email,))
+                    cursor.execute("SELECT cliente_id FROM clientes WHERE correo = %s", (email,))
                     cliente_existente = cursor.fetchone()
                     if cliente_existente:
-                        cliente_id = cliente_existente['id']
+                        cliente_id = cliente_existente['cliente_id']
                 except Error:
                     pass
     
@@ -340,69 +370,152 @@ def cotizaciones():
         
         # Si el usuario está enviando el formulario (POST)
         if request.method == 'POST':
-            nombre = request.form.get('nombre', '').strip()
-            telefono = request.form.get('telefono', '').strip()
-            email = request.form.get('email', '').strip()
-            servicio_id = int(request.form.get('servicio_id', 0))
+            # Si el usuario está logueado, usar datos de la sesión
+            if 'usuario_id' in session:
+                nombre = session.get('nombre', '')
+                email = session.get('email', '')
+                # Obtener teléfono del usuario desde la BD si está disponible
+                usuario_id = session.get('usuario_id')
+                try:
+                    cursor.execute("SELECT telefono FROM usuarios WHERE usuario_id = %s", (usuario_id,))
+                    usuario_data = cursor.fetchone()
+                    telefono = usuario_data['telefono'] if usuario_data and usuario_data.get('telefono') else ''
+                except Error:
+                    telefono = ''
+            else:
+                # Si no está logueado, obtener datos del formulario
+                nombre = request.form.get('nombre', '').strip()
+                telefono = request.form.get('telefono', '').strip()
+                email = request.form.get('email', '').strip()
+            
+            # Obtener múltiples servicios seleccionados
+            servicios_ids = request.form.getlist('servicio_id[]')  # Array de servicios
+            if not servicios_ids:
+                # Compatibilidad: si viene servicio_id (singular), convertirlo a lista
+                servicio_id_single = request.form.get('servicio_id', '')
+                if servicio_id_single:
+                    servicios_ids = [servicio_id_single]
+            
             marca_vehiculo = request.form.get('marca_vehiculo', '').strip()
             modelo_vehiculo = request.form.get('modelo_vehiculo', '').strip()
             año_id = int(request.form.get('año_id', 0))
             cilindros = request.form.get('cilindros', '').strip()
             mensaje = request.form.get('mensaje', '').strip()
             
-            if nombre and telefono and email and servicio_id and marca_vehiculo and año_id and cilindros:
+            # Validación: verificar que haya al menos un servicio seleccionado
+            servicios_ids_int = []
+            for sid in servicios_ids:
+                try:
+                    servicios_ids_int.append(int(sid))
+                except ValueError:
+                    continue
+            
+            # Validación: si está logueado, solo validar que tenga email y nombre en sesión
+            if 'usuario_id' in session:
+                if nombre and email and servicios_ids_int and marca_vehiculo and año_id and cilindros:
+                    validacion_ok = True
+                else:
+                    validacion_ok = False
+                    flash('Por favor complete todos los campos requeridos y seleccione al menos un servicio', 'warning')
+            else:
+                # Si no está logueado, validar todos los campos
+                if nombre and telefono and email and servicios_ids_int and marca_vehiculo and año_id and cilindros:
+                    validacion_ok = True
+                else:
+                    validacion_ok = False
+                    flash('Por favor complete todos los campos requeridos y seleccione al menos un servicio', 'warning')
+            
+            if validacion_ok:
                 try:
                     cilindros_int = int(cilindros)
                     
                     # Obtener año del vehículo
-                    cursor.execute("SELECT año FROM años_vehiculos WHERE id = %s", (año_id,))
+                    cursor.execute("SELECT año FROM años_vehiculos WHERE año_id = %s", (año_id,))
                     año_data = cursor.fetchone()
                     año = año_data['año'] if año_data else 0
                     
                     # Obtener marca_id si existe (opcional)
                     marca_id = None
                     try:
-                        cursor.execute("SELECT id FROM marcas_vehiculos WHERE nombre = %s", (marca_vehiculo,))
+                        cursor.execute("SELECT marca_id FROM marcas_vehiculos WHERE nombre = %s", (marca_vehiculo,))
                         marca_data = cursor.fetchone()
                         if marca_data:
-                            marca_id = marca_data['id']
+                            marca_id = marca_data['marca_id']
                     except Error:
                         marca_id = None
                     
-                    # Obtener nombre del servicio
-                    cursor.execute("SELECT nombre FROM servicios WHERE id = %s", (servicio_id,))
-                    servicio_data = cursor.fetchone()
-                    servicio_nombre = servicio_data['nombre'] if servicio_data else 'Servicio'
+                    # Obtener nombres de servicios seleccionados
+                    servicios_nombres = []
+                    precio_total = 0.0
+                    for servicio_id in servicios_ids_int:
+                        cursor.execute("SELECT nombre FROM servicios WHERE servicio_id = %s", (servicio_id,))
+                        servicio_data = cursor.fetchone()
+                        if servicio_data:
+                            servicios_nombres.append(servicio_data['nombre'])
+                            # Calcular precio para cada servicio
+                            precio_servicio = calcular_precio_servicio(cursor, servicio_id, cilindros_int, año)
+                            precio_total += precio_servicio
                     
-                    # Calcular precio personalizado
-                    precio_calculado = calcular_precio_servicio(cursor, servicio_id, cilindros_int, año)
+                    servicio_nombre = ', '.join(servicios_nombres) if servicios_nombres else 'Servicios'
                     
                     # Obtener o crear cliente
                     cliente_id = obtener_o_crear_cliente(cursor, conn, nombre, telefono, email)
                     
-                    # Insertar cotización con relación a cliente
+                    # Obtener usuario_id si está logueado y verificar que existe en la BD
+                    usuario_id_session = session.get('usuario_id', None)
+                    usuario_id = None
+                    if usuario_id_session:
+                        try:
+                            # Convertir a entero si es necesario
+                            usuario_id_int = int(usuario_id_session) if usuario_id_session else None
+                            if usuario_id_int:
+                                # Verificar que el usuario existe en la base de datos
+                                cursor.execute("SELECT usuario_id FROM usuarios WHERE usuario_id = %s", (usuario_id_int,))
+                                usuario_existe = cursor.fetchone()
+                                if usuario_existe:
+                                    usuario_id = usuario_id_int
+                                else:
+                                    print(f"[WARNING] Usuario ID {usuario_id_int} de la sesión no existe en la BD, usando NULL")
+                                    usuario_id = None
+                        except (ValueError, TypeError, Exception) as e:
+                            print(f"[ERROR] Error verificando usuario_id: {e}")
+                            usuario_id = None
+                    
+                    # Insertar cotización con relación a cliente y usuario
+                    # Usar el primer servicio_id para compatibilidad con campos antiguos
+                    primer_servicio_id = servicios_ids_int[0] if servicios_ids_int else None
                     sql = """INSERT INTO cotizaciones 
                              (nombre, telefono, email, cliente_id, servicio, servicio_id, 
                               marca_vehiculo, marca_id, modelo_vehiculo, 
-                              anio_vehiculo, año_id, cilindros, mensaje, precio_calculado) 
-                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                              anio_vehiculo, año_id, cilindros, mensaje, precio_calculado, usuario_id) 
+                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
                     cursor.execute(sql, (
-                        nombre, telefono, email, cliente_id, servicio_nombre, servicio_id,
+                        nombre, telefono, email, cliente_id, servicio_nombre, primer_servicio_id,
                         marca_vehiculo, marca_id, modelo_vehiculo,
-                        año, año_id, cilindros_int, mensaje, precio_calculado
+                        año, año_id, cilindros_int, mensaje, precio_total, usuario_id
                     ))
                     cotizacion_id = cursor.lastrowid
+                    
+                    # Insertar relaciones muchos-a-muchos en cotizaciones_servicios
+                    for servicio_id in servicios_ids_int:
+                        # Calcular precio para este servicio específico
+                        precio_servicio = calcular_precio_servicio(cursor, servicio_id, cilindros_int, año)
+                        cursor.execute("""INSERT INTO cotizaciones_servicios 
+                                         (cotizacion_id, servicio_id, precio_calculado) 
+                                         VALUES (%s, %s, %s)""",
+                                     (cotizacion_id, servicio_id, precio_servicio))
+                    
                     conn.commit()
                     
                     # Enviar correo automáticamente al cliente
                     try:
                         if enviar_cotizacion_por_correo(cotizacion_id):
-                            flash(f'✅ Cotización enviada correctamente. Precio estimado: ${precio_calculado:.2f}. Se ha enviado un correo con los detalles.', 'success')
+                            flash(f'✅ Cotización enviada correctamente. Precio total estimado: ${precio_total:.2f} ({len(servicios_ids_int)} servicio(s)). Se ha enviado un correo con los detalles.', 'success')
                         else:
-                            flash(f'✅ Cotización guardada correctamente. Precio estimado: ${precio_calculado:.2f}. No se pudo enviar el correo.', 'warning')
+                            flash(f'✅ Cotización guardada correctamente. Precio total estimado: ${precio_total:.2f} ({len(servicios_ids_int)} servicio(s)). No se pudo enviar el correo.', 'warning')
                     except Exception as e:
                         print(f"Error al enviar correo automático: {e}")
-                        flash(f'✅ Cotización guardada correctamente. Precio estimado: ${precio_calculado:.2f}. Error al enviar correo: {str(e)}', 'warning')
+                        flash(f'✅ Cotización guardada correctamente. Precio total estimado: ${precio_total:.2f} ({len(servicios_ids_int)} servicio(s)). Error al enviar correo: {str(e)}', 'warning')
                     
                     return redirect(url_for('cotizaciones'))
                     
@@ -411,9 +524,28 @@ def cotizaciones():
                 except Error as e:
                     flash(f'❌ Error al enviar cotización: {str(e)}', 'danger')
             else:
-                flash('Por favor complete todos los campos requeridos', 'warning')
+                if 'usuario_id' not in session:
+                    flash('Por favor complete todos los campos requeridos', 'warning')
         
-        return render_template('cotizaciones.html', servicios=servicios, marcas=marcas, años=años)
+        # Pasar información del usuario logueado al template
+        usuario_logueado = {
+            'id': session.get('usuario_id'),
+            'nombre': session.get('nombre', ''),
+            'email': session.get('email', ''),
+            'telefono': None
+        }
+        
+        # Si está logueado, obtener teléfono de la BD
+        if usuario_logueado.get('usuario_id'):
+            try:
+                cursor.execute("SELECT telefono FROM usuarios WHERE usuario_id = %s", (usuario_logueado['usuario_id'],))
+                usuario_data = cursor.fetchone()
+                if usuario_data:
+                    usuario_logueado['telefono'] = usuario_data.get('telefono', '')
+            except Error:
+                pass
+        
+        return render_template('cotizaciones.html', servicios=servicios, marcas=marcas, años=años, usuario=usuario_logueado)
     
     except Error as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -709,7 +841,7 @@ def citas():
     conn = get_db_connection()
     if not conn:
         flash('Error de conexión a la base de datos', 'danger')
-        return render_template('citas.html', servicios=[])
+        return render_template('citas.html', servicios=[], cotizacion=None, usuario=None)
     
     try:
         cursor = get_cursor(conn)
@@ -718,15 +850,94 @@ def citas():
         cursor.execute("SELECT * FROM servicios ORDER BY nombre")
         servicios = cursor.fetchall()
         
+        # Si viene desde una cotización, obtener datos de la cotización
+        cotizacion_id = request.args.get('cotizacion_id', type=int)
+        cotizacion_data = None
+        if cotizacion_id:
+            try:
+                # Si el usuario está logueado, verificar que la cotización sea suya
+                if 'usuario_id' in session:
+                    usuario_id = session.get('usuario_id')
+                    usuario_email = session.get('email', '')
+                    cursor.execute("""SELECT c.* FROM cotizaciones c 
+                                   LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                                   WHERE c.cotizacion_id = %s AND (c.usuario_id = %s OR cl.correo = %s OR c.email = %s)""",
+                                (cotizacion_id, usuario_id, usuario_email, usuario_email))
+                else:
+                    cursor.execute("SELECT * FROM cotizaciones WHERE cotizacion_id = %s", (cotizacion_id,))
+                cotizacion_data = cursor.fetchone()
+            except Error as e:
+                print(f"[ERROR] Error obteniendo cotización: {e}")
+                cotizacion_data = None
+        
         if request.method == 'POST':
-            nombre = request.form.get('nombre', '').strip()
-            telefono = request.form.get('telefono', '').strip()
-            email = request.form.get('email', '').strip()
+            # Si el usuario está logueado, usar datos de la sesión
+            if 'usuario_id' in session:
+                nombre = session.get('nombre', '')
+                email = session.get('email', '')
+                # Obtener teléfono del usuario desde la BD si está disponible
+                usuario_id = session.get('usuario_id')
+                try:
+                    cursor.execute("SELECT telefono FROM usuarios WHERE usuario_id = %s", (usuario_id,))
+                    usuario_data = cursor.fetchone()
+                    telefono = usuario_data['telefono'] if usuario_data and usuario_data.get('telefono') else ''
+                except Error:
+                    telefono = ''
+            else:
+                # Si no está logueado, obtener datos del formulario
+                nombre = request.form.get('nombre', '').strip()
+                telefono = request.form.get('telefono', '').strip()
+                email = request.form.get('email', '').strip()
+            
             fecha = request.form.get('fecha', '').strip()
             hora = request.form.get('hora', '').strip()
-            servicio_id = request.form.get('servicio_id', '').strip()
             
-            if nombre and telefono and email and fecha and hora and servicio_id:
+            # Obtener múltiples servicios seleccionados
+            servicios_ids = request.form.getlist('servicio_id[]')  # Array de servicios
+            if not servicios_ids:
+                # Compatibilidad: si viene servicio_id (singular), convertirlo a lista
+                servicio_id_single = request.form.get('servicio_id', '')
+                if servicio_id_single:
+                    servicios_ids = [servicio_id_single]
+            
+            # Debug: imprimir qué se recibió
+            print(f"[DEBUG] Servicios recibidos (raw): {servicios_ids}")
+            print(f"[DEBUG] Nombre: {nombre}, Email: {email}, Fecha: {fecha}, Hora: {hora}")
+            print(f"[DEBUG] Usuario logueado: {'usuario_id' in session}")
+            
+            # Validación: verificar que haya al menos un servicio seleccionado
+            servicios_ids_int = []
+            for sid in servicios_ids:
+                try:
+                    servicios_ids_int.append(int(sid))
+                except ValueError:
+                    continue
+            
+            print(f"[DEBUG] Servicios IDs convertidos: {servicios_ids_int}")
+            
+            # Validación: si está logueado, solo validar que tenga email y nombre en sesión
+            if 'usuario_id' in session:
+                if nombre and email and fecha and hora and len(servicios_ids_int) > 0:
+                    validacion_ok = True
+                else:
+                    validacion_ok = False
+                    print(f"[DEBUG] Validación fallida - nombre: {bool(nombre)}, email: {bool(email)}, fecha: {bool(fecha)}, hora: {bool(hora)}, servicios: {len(servicios_ids_int)}")
+                    if len(servicios_ids_int) == 0:
+                        flash('Por favor seleccione al menos un servicio', 'warning')
+                    else:
+                        flash('Por favor complete todos los campos requeridos', 'warning')
+            else:
+                # Si no está logueado, validar todos los campos
+                if nombre and telefono and email and fecha and hora and len(servicios_ids_int) > 0:
+                    validacion_ok = True
+                else:
+                    validacion_ok = False
+                    if len(servicios_ids_int) == 0:
+                        flash('Por favor seleccione al menos un servicio', 'warning')
+                    else:
+                        flash('Por favor complete todos los campos requeridos', 'warning')
+            
+            if validacion_ok:
                 try:
                     # Validar que el horario esté disponible
                     print(f"[DEBUG] ========== VALIDANDO CITA ==========")
@@ -738,10 +949,11 @@ def citas():
                         print(f"[DEBUG] Hora seleccionada parseada: {hora_seleccionada}")
                     except ValueError:
                         flash('❌ Formato de hora inválido', 'danger')
-                        return render_template('citas.html', servicios=servicios)
+                        usuario_logueado = obtener_datos_usuario_logueado(cursor, session)
+                        return render_template('citas.html', servicios=servicios, cotizacion=cotizacion_data, usuario=usuario_logueado)
                     
                     # Consultar citas existentes para esa fecha
-                    cursor.execute("SELECT id, hora FROM citas WHERE fecha = %s", (fecha,))
+                    cursor.execute("SELECT cita_id, hora FROM citas WHERE fecha = %s", (fecha,))
                     citas_existentes = cursor.fetchall()
                     print(f"[DEBUG] Citas existentes encontradas: {len(citas_existentes)}")
                     
@@ -750,7 +962,7 @@ def citas():
                     
                     for cita in citas_existentes:
                         hora_existente = cita['hora']
-                        cita_id = cita['id']
+                        cita_id = cita['cita_id']
                         print(f"[DEBUG] --- Comparando con cita ID {cita_id} ---")
                         print(f"[DEBUG] Hora existente (raw): {hora_existente}, tipo: {type(hora_existente)}")
                         
@@ -819,25 +1031,72 @@ def citas():
                         print(f"[DEBUG] {mensaje}")
                         flash(mensaje, 'danger')
                         # NO continuar, retornar para que el usuario vea el error
-                        return render_template('citas.html', servicios=servicios)
+                        usuario_logueado = obtener_datos_usuario_logueado(cursor, session)
+                        return render_template('citas.html', servicios=servicios, cotizacion=cotizacion_data, usuario=usuario_logueado)
                     else:
                         print(f"[DEBUG] ✅ Horario disponible, procediendo a guardar la cita")
-                        # Obtener nombre del servicio desde la base de datos
-                        cursor.execute("SELECT nombre FROM servicios WHERE id = %s", (int(servicio_id),))
-                        servicio_data = cursor.fetchone()
-                        servicio_nombre = servicio_data['nombre'] if servicio_data else servicio_id
+                        
+                        # Obtener nombres de servicios seleccionados
+                        servicios_nombres = []
+                        for servicio_id in servicios_ids_int:
+                            cursor.execute("SELECT nombre FROM servicios WHERE servicio_id = %s", (servicio_id,))
+                            servicio_data = cursor.fetchone()
+                            if servicio_data:
+                                servicios_nombres.append(servicio_data['nombre'])
+                        
+                        servicio_nombre = ', '.join(servicios_nombres) if servicios_nombres else 'Servicios'
                         
                         # Obtener o crear cliente
                         cliente_id = obtener_o_crear_cliente(cursor, conn, nombre, telefono, email)
                         
-                        # Obtener usuario_id si está logueado
-                        usuario_id = session.get('usuario_id', None)
+                        # Obtener usuario_id si está logueado y verificar que existe en la BD
+                        usuario_id_session = session.get('usuario_id', None)
+                        usuario_id = None
+                        if usuario_id_session:
+                            try:
+                                # Convertir a entero si es necesario
+                                usuario_id_int = int(usuario_id_session) if usuario_id_session else None
+                                if usuario_id_int:
+                                    # Verificar que el usuario existe en la base de datos
+                                    cursor.execute("SELECT usuario_id FROM usuarios WHERE usuario_id = %s", (usuario_id_int,))
+                                    usuario_existe = cursor.fetchone()
+                                    if usuario_existe:
+                                        usuario_id = usuario_id_int
+                                    else:
+                                        print(f"[WARNING] Usuario ID {usuario_id_int} de la sesión no existe en la BD, usando NULL")
+                                        usuario_id = None
+                            except (ValueError, TypeError, Exception) as e:
+                                print(f"[ERROR] Error verificando usuario_id: {e}")
+                                usuario_id = None
                         
-                        # Insertar cita con relaciones
-                        sql = """INSERT INTO citas (nombre, telefono, email, cliente_id, fecha, hora, servicio, servicio_id, usuario_id, estatus) 
-                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente')"""
-                        cursor.execute(sql, (nombre, telefono, email, cliente_id, fecha, hora, servicio_nombre, int(servicio_id), usuario_id))
+                        # Obtener cotizacion_id si viene desde una cotización
+                        cotizacion_id_param = request.form.get('cotizacion_id', None)
+                        cotizacion_id = None
+                        if cotizacion_id_param:
+                            try:
+                                cotizacion_id = int(cotizacion_id_param)
+                                # Verificar que la cotización existe
+                                cursor.execute("SELECT cotizacion_id FROM cotizaciones WHERE cotizacion_id = %s", (cotizacion_id,))
+                                if not cursor.fetchone():
+                                    print(f"[WARNING] Cotización ID {cotizacion_id} no existe, usando NULL")
+                                    cotizacion_id = None
+                            except (ValueError, Exception) as e:
+                                print(f"[ERROR] Error procesando cotizacion_id: {e}")
+                                cotizacion_id = None
+                        
+                        # Insertar cita con relaciones (usar primer servicio_id para compatibilidad)
+                        primer_servicio_id = servicios_ids_int[0] if servicios_ids_int else None
+                        sql = """INSERT INTO citas (nombre, telefono, email, cliente_id, fecha, hora, servicio, servicio_id, usuario_id, cotizacion_id, estatus) 
+                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente')"""
+                        cursor.execute(sql, (nombre, telefono, email, cliente_id, fecha, hora, servicio_nombre, primer_servicio_id, usuario_id, cotizacion_id))
                         cita_id = cursor.lastrowid
+                        
+                        # Insertar relaciones muchos-a-muchos en citas_servicios
+                        for servicio_id in servicios_ids_int:
+                            cursor.execute("""INSERT INTO citas_servicios (cita_id, servicio_id) 
+                                             VALUES (%s, %s)""",
+                                         (cita_id, servicio_id))
+                        
                         conn.commit()
                         
                         # Enviar correo de confirmación automáticamente
@@ -867,20 +1126,23 @@ def citas():
             else:
                 flash('Por favor complete todos los campos requeridos', 'warning')
         
-        return render_template('citas.html', servicios=servicios)
+        # Pasar información del usuario logueado al template
+        usuario_logueado = obtener_datos_usuario_logueado(cursor, session)
+        
+        return render_template('citas.html', servicios=servicios, cotizacion=cotizacion_data, usuario=usuario_logueado)
     
     except Error as e:
         print(f"[ERROR] Error de BD en citas: {e}")
         import traceback
         traceback.print_exc()
         flash(f'Error de base de datos: {str(e)}', 'danger')
-        return render_template('citas.html', servicios=[])
+        return render_template('citas.html', servicios=[], cotizacion=None, usuario=None)
     except Exception as e:
         print(f"[ERROR] Error inesperado en citas: {e}")
         import traceback
         traceback.print_exc()
         flash('Error inesperado. Por favor intenta más tarde.', 'danger')
-        return render_template('citas.html', servicios=[])
+        return render_template('citas.html', servicios=[], cotizacion=None, usuario=None)
     finally:
         if conn:
             try:
@@ -919,7 +1181,7 @@ def login():
                     cursor = get_cursor(conn)
                     sql = """SELECT u.*, r.nombre as rol_nombre 
                              FROM usuarios u 
-                             INNER JOIN roles r ON u.rol_id = r.id 
+                             INNER JOIN roles r ON u.rol_id = r.rol_id 
                              WHERE u.username = %s AND u.activo = 1"""
                     cursor.execute(sql, (username,))
                     usuario = cursor.fetchone()
@@ -946,7 +1208,7 @@ def login():
                                 password_valid = False
                         
                         if password_valid:
-                            session['usuario_id'] = usuario['id']
+                            session['usuario_id'] = usuario['usuario_id']
                             session['username'] = usuario['username']
                             session['nombre'] = usuario['nombre']
                             session['rol'] = usuario['rol_nombre']
@@ -1025,7 +1287,7 @@ def user_dashboard():
         try:
             # Contar citas del usuario (por email)
             cursor.execute("""SELECT COUNT(*) as total FROM citas c
-                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
                              WHERE cl.correo = %s OR c.email = %s""", (usuario_email, usuario_email))
             result = cursor.fetchone()
             total_citas = result['total'] if result else 0
@@ -1036,7 +1298,7 @@ def user_dashboard():
         try:
             # Contar cotizaciones del usuario (por email)
             cursor.execute("""SELECT COUNT(*) as total FROM cotizaciones c
-                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
                              WHERE cl.correo = %s OR c.email = %s""", (usuario_email, usuario_email))
             result = cursor.fetchone()
             total_cotizaciones = result['total'] if result else 0
@@ -1046,14 +1308,17 @@ def user_dashboard():
         
         try:
             # Obtener últimas citas con JOINs
+            usuario_id = session.get('usuario_id')
             cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
-                             cl.correo as cliente_correo, s.nombre as servicio_nombre_completo
+                             cl.correo as cliente_correo, s.nombre as servicio_nombre_completo,
+                             cot.cotizacion_id, cot.precio_calculado as cotizacion_precio
                              FROM citas c
-                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
-                             LEFT JOIN servicios s ON c.servicio_id = s.id
-                             WHERE cl.correo = %s OR c.email = %s
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                             LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                             LEFT JOIN cotizaciones cot ON c.cotizacion_id = cot.cotizacion_id
+                             WHERE c.usuario_id = %s OR cl.correo = %s OR c.email = %s
                              ORDER BY c.fecha DESC, c.hora DESC 
-                             LIMIT 5""", (usuario_email, usuario_email))
+                             LIMIT 5""", (usuario_id, usuario_email, usuario_email))
             ultimas_citas = cursor.fetchall()
             
             # Convertir horas de timedelta a time
@@ -1072,15 +1337,29 @@ def user_dashboard():
         
         try:
             # Obtener últimas cotizaciones
+            usuario_id = session.get('usuario_id')
             cursor.execute("""SELECT c.*, s.nombre as servicio_nombre,
                              cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, cl.correo as cliente_correo
                              FROM cotizaciones c 
-                             LEFT JOIN servicios s ON c.servicio_id = s.id
-                             LEFT JOIN clientes cl ON c.cliente_id = cl.id
-                             WHERE cl.correo = %s OR c.email = %s 
+                             LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                             LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                             WHERE c.usuario_id = %s OR cl.correo = %s OR c.email = %s 
                              ORDER BY c.fecha_envio DESC 
-                             LIMIT 5""", (usuario_email, usuario_email))
+                             LIMIT 5""", (usuario_id, usuario_email, usuario_email))
             ultimas_cotizaciones = cursor.fetchall()
+            
+            # Obtener servicios relacionados para cada cotización
+            for cotizacion in ultimas_cotizaciones:
+                try:
+                    cursor.execute("""SELECT s.servicio_id, s.nombre, cs.precio_calculado as precio_servicio
+                                     FROM cotizaciones_servicios cs
+                                     JOIN servicios s ON cs.servicio_id = s.servicio_id
+                                     WHERE cs.cotizacion_id = %s
+                                     ORDER BY s.nombre""", (cotizacion['cotizacion_id'],))
+                    servicios_relacionados = cursor.fetchall()
+                    cotizacion['servicios_relacionados'] = servicios_relacionados
+                except Error:
+                    cotizacion['servicios_relacionados'] = []
         except Error as e:
             print(f"[ERROR] Error obteniendo últimas cotizaciones: {e}")
             ultimas_cotizaciones = []
@@ -1118,8 +1397,9 @@ def user_citas():
     
     Muestra todas las citas del usuario ordenadas por fecha y hora (más recientes primero).
     También muestra el estatus de cada cita (Pendiente, Confirmada, etc.).
-    Las citas se identifican por el email del usuario en sesión.
+    Las citas se identifican por usuario_id o email del usuario en sesión.
     """
+    usuario_id = session.get('usuario_id')
     usuario_email = session.get('email', '')
     
     conn = get_db_connection()
@@ -1129,14 +1409,33 @@ def user_citas():
     
     try:
         cursor = get_cursor(conn)
+        # Filtrar por usuario_id (prioritario) o por email (compatibilidad con citas antiguas)
         cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
-                         cl.correo as cliente_correo, s.nombre as servicio_nombre_completo
+                         cl.correo as cliente_correo, s.nombre as servicio_nombre_completo,
+                         cot.cotizacion_id, cot.precio_calculado as cotizacion_precio,
+                         cot.marca_vehiculo as cotizacion_marca, cot.modelo_vehiculo as cotizacion_modelo,
+                         cot.anio_vehiculo as cotizacion_anio, cot.cilindros as cotizacion_cilindros
                          FROM citas c
-                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
-                         LEFT JOIN servicios s ON c.servicio_id = s.id
-                         WHERE cl.correo = %s OR c.email = %s
-                         ORDER BY c.fecha DESC, c.hora DESC""", (usuario_email, usuario_email))
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                         LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                         LEFT JOIN cotizaciones cot ON c.cotizacion_id = cot.cotizacion_id
+                         WHERE c.usuario_id = %s OR cl.correo = %s OR c.email = %s
+                         ORDER BY c.fecha DESC, c.hora DESC""", (usuario_id, usuario_email, usuario_email))
         citas = cursor.fetchall()
+        
+        # Obtener servicios relacionados para cada cita
+        for cita in citas:
+            try:
+                cursor.execute("""SELECT s.servicio_id, s.nombre 
+                                 FROM citas_servicios cs
+                                 JOIN servicios s ON cs.servicio_id = s.servicio_id
+                                 WHERE cs.cita_id = %s
+                                 ORDER BY s.nombre""", (cita['cita_id'],))
+                servicios_relacionados = cursor.fetchall()
+                cita['servicios_relacionados'] = servicios_relacionados
+            except Error as e:
+                print(f"[ERROR] Error obteniendo servicios relacionados para cita {cita['cita_id']}: {e}")
+                cita['servicios_relacionados'] = []
         
         # Convertir horas de timedelta a time
         for cita in citas:
@@ -1188,8 +1487,9 @@ def user_cotizaciones():
     Muestra todas las cotizaciones que el usuario ha solicitado,
     ordenadas por fecha (más recientes primero).
     Incluye el servicio, vehículo, precio calculado y fecha.
-    Las cotizaciones se identifican por el email del usuario en sesión.
+    Las cotizaciones se identifican por usuario_id o email del usuario en sesión.
     """
+    usuario_id = session.get('usuario_id')
     usuario_email = session.get('email', '')
     
     conn = get_db_connection()
@@ -1199,14 +1499,29 @@ def user_cotizaciones():
     
     try:
         cursor = get_cursor(conn)
+        # Filtrar por usuario_id (prioritario) o por email (compatibilidad con cotizaciones antiguas)
         cursor.execute("""SELECT c.*, s.nombre as servicio_nombre, 
                          cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, cl.correo as cliente_correo
                          FROM cotizaciones c 
-                         LEFT JOIN servicios s ON c.servicio_id = s.id
-                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
-                         WHERE cl.correo = %s OR c.email = %s 
-                         ORDER BY c.fecha_envio DESC""", (usuario_email, usuario_email))
+                         LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                         WHERE c.usuario_id = %s OR cl.correo = %s OR c.email = %s 
+                         ORDER BY c.fecha_envio DESC""", (usuario_id, usuario_email, usuario_email))
         cotizaciones = cursor.fetchall()
+        
+        # Obtener servicios relacionados para cada cotización
+        for cotizacion in cotizaciones:
+            try:
+                cursor.execute("""SELECT s.servicio_id, s.nombre, cs.precio_calculado as precio_servicio
+                                 FROM cotizaciones_servicios cs
+                                 JOIN servicios s ON cs.servicio_id = s.servicio_id
+                                 WHERE cs.cotizacion_id = %s
+                                 ORDER BY s.nombre""", (cotizacion['cotizacion_id'],))
+                servicios_relacionados = cursor.fetchall()
+                cotizacion['servicios_relacionados'] = servicios_relacionados
+            except Error as e:
+                print(f"[ERROR] Error obteniendo servicios relacionados para cotización {cotizacion['cotizacion_id']}: {e}")
+                cotizacion['servicios_relacionados'] = []
         
         return render_template('usuario/cotizaciones.html', cotizaciones=cotizaciones)
     
@@ -1228,6 +1543,97 @@ def user_cotizaciones():
                 conn.close()
             except Exception as e:
                 print(f"[ERROR] Error cerrando conexión en user_cotizaciones: {e}")
+
+@app.route('/usuario/cotizaciones/<int:cotizacion_id>/detalles')
+@login_required
+def user_cotizacion_detalles(cotizacion_id):
+    """
+    Obtiene los detalles de una cotización específica para mostrarla en un modal.
+    """
+    usuario_id = session.get('usuario_id')
+    usuario_email = session.get('email', '')
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Error de conexión a la base de datos'})
+    
+    try:
+        cursor = get_cursor(conn)
+        # Verificar que la cotización pertenece al usuario
+        cursor.execute("""SELECT c.*, s.nombre as servicio_nombre 
+                         FROM cotizaciones c 
+                         LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                         WHERE c.cotizacion_id = %s AND (c.usuario_id = %s OR cl.correo = %s OR c.email = %s)""",
+                      (cotizacion_id, usuario_id, usuario_email, usuario_email))
+        cotizacion = cursor.fetchone()
+        
+        if not cotizacion:
+            return jsonify({'success': False, 'error': 'Cotización no encontrada o no tienes permisos'})
+        
+        # Convertir a diccionario serializable
+        cotizacion_dict = {
+            'id': cotizacion['cotizacion_id'],
+            'servicio': cotizacion.get('servicio', ''),
+            'servicio_nombre': cotizacion.get('servicio_nombre', ''),
+            'marca_vehiculo': cotizacion.get('marca_vehiculo', ''),
+            'modelo_vehiculo': cotizacion.get('modelo_vehiculo', ''),
+            'anio_vehiculo': cotizacion.get('anio_vehiculo'),
+            'cilindros': cotizacion.get('cilindros'),
+            'precio_calculado': float(cotizacion.get('precio_calculado', 0)) if cotizacion.get('precio_calculado') else 0,
+            'fecha_envio': cotizacion.get('fecha_envio').isoformat() if cotizacion.get('fecha_envio') else None,
+            'mensaje': cotizacion.get('mensaje', '')
+        }
+        
+        return jsonify({'success': True, 'cotizacion': cotizacion_dict})
+    
+    except Exception as e:
+        print(f"[ERROR] Error obteniendo detalles de cotización: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/usuario/cotizaciones/reenviar', methods=['POST'])
+@login_required
+def user_reenviar_cotizacion():
+    """
+    Permite al usuario reenviar una cotización por correo electrónico.
+    """
+    usuario_id = session.get('usuario_id')
+    cotizacion_id = int(request.form.get('cotizacion_id', 0))
+    
+    if not cotizacion_id:
+        return jsonify({'success': False, 'error': 'ID de cotización no proporcionado'})
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Error de conexión a la base de datos'})
+    
+    try:
+        cursor = get_cursor(conn)
+        # Verificar que la cotización pertenece al usuario
+        cursor.execute("""SELECT c.* FROM cotizaciones c 
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                         WHERE c.cotizacion_id = %s AND (c.usuario_id = %s OR cl.correo = %s OR c.email = %s)""",
+                      (cotizacion_id, usuario_id, session.get('email', ''), session.get('email', '')))
+        cotizacion = cursor.fetchone()
+        
+        if not cotizacion:
+            return jsonify({'success': False, 'error': 'Cotización no encontrada o no tienes permisos'})
+        
+        # Reenviar correo
+        if enviar_cotizacion_por_correo(cotizacion_id):
+            return jsonify({'success': True, 'message': 'Cotización reenviada correctamente'})
+        else:
+            return jsonify({'success': False, 'error': 'Error al enviar el correo'})
+    
+    except Exception as e:
+        print(f"[ERROR] Error reenviando cotización: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        if conn:
+            conn.close()
 
 # ============================================
 # RUTAS ADMINISTRATIVAS
@@ -1382,7 +1788,7 @@ def admin_usuarios():
                 activo = 1 if request.form.get('activo') else 0
                 
                 sql = """UPDATE usuarios SET nombre = %s, email = %s, telefono = %s, 
-                         rol_id = %s, activo = %s WHERE id = %s"""
+                         rol_id = %s, activo = %s WHERE usuario_id = %s"""
                 cursor.execute(sql, (nombre, email, telefono, rol_id, activo, usuario_id))
                 conn.commit()
                 flash('Usuario actualizado exitosamente', 'success')
@@ -1392,7 +1798,7 @@ def admin_usuarios():
                 if usuario_id == session.get('usuario_id'):
                     flash('No puede eliminar su propio usuario', 'danger')
                 else:
-                    cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
+                    cursor.execute("DELETE FROM usuarios WHERE usuario_id = %s", (usuario_id,))
                     conn.commit()
                     flash('Usuario eliminado exitosamente', 'success')
             
@@ -1401,7 +1807,7 @@ def admin_usuarios():
                 password = request.form.get('password', '').strip()
                 if password:
                     password_hash = generate_password_hash(password)
-                    cursor.execute("UPDATE usuarios SET password = %s WHERE id = %s", 
+                    cursor.execute("UPDATE usuarios SET password = %s WHERE usuario_id = %s", 
                                  (password_hash, usuario_id))
                     conn.commit()
                     flash('Contraseña actualizada exitosamente', 'success')
@@ -1409,7 +1815,7 @@ def admin_usuarios():
         # Obtener usuarios y roles
         cursor.execute("""SELECT u.*, r.nombre as rol_nombre 
                           FROM usuarios u 
-                          INNER JOIN roles r ON u.rol_id = r.id 
+                          INNER JOIN roles r ON u.rol_id = r.rol_id 
                           ORDER BY u.fecha_creacion DESC""")
         usuarios = cursor.fetchall()
         
@@ -1481,14 +1887,14 @@ def admin_servicios():
                 nombre = request.form.get('nombre', '').strip()
                 descripcion = request.form.get('descripcion', '').strip()
                 if nombre:
-                    sql = "UPDATE servicios SET nombre = %s, descripcion = %s WHERE id = %s"
+                    sql = "UPDATE servicios SET nombre = %s, descripcion = %s WHERE servicio_id = %s"
                     cursor.execute(sql, (nombre, descripcion, servicio_id))
                     conn.commit()
                     flash('Servicio actualizado exitosamente', 'success')
             
             elif accion == 'eliminar':
                 servicio_id = int(request.form.get('id', 0))
-                cursor.execute("DELETE FROM servicios WHERE id = %s", (servicio_id,))
+                cursor.execute("DELETE FROM servicios WHERE servicio_id = %s", (servicio_id,))
                 conn.commit()
                 flash('Servicio eliminado exitosamente', 'success')
         
@@ -1560,7 +1966,7 @@ def admin_roles():
                 nombre = request.form.get('nombre', '').strip()
                 descripcion = request.form.get('descripcion', '').strip()
                 if nombre:
-                    sql = "UPDATE roles SET nombre = %s, descripcion = %s WHERE id = %s"
+                    sql = "UPDATE roles SET nombre = %s, descripcion = %s WHERE rol_id = %s"
                     cursor.execute(sql, (nombre, descripcion, rol_id))
                     conn.commit()
                     flash('Rol actualizado exitosamente', 'success')
@@ -1573,14 +1979,14 @@ def admin_roles():
                 if total > 0:
                     flash(f'No se puede eliminar el rol porque hay {total} usuario(s) asignado(s)', 'danger')
                 else:
-                    cursor.execute("DELETE FROM roles WHERE id = %s", (rol_id,))
+                    cursor.execute("DELETE FROM roles WHERE rol_id = %s", (rol_id,))
                     conn.commit()
                     flash('Rol eliminado exitosamente', 'success')
         
-        cursor.execute("""SELECT r.*, COUNT(u.id) as total_usuarios 
+        cursor.execute("""SELECT r.*, COUNT(u.usuario_id) as total_usuarios 
                           FROM roles r 
-                          LEFT JOIN usuarios u ON r.id = u.rol_id 
-                          GROUP BY r.id 
+                          LEFT JOIN usuarios u ON r.rol_id = u.rol_id 
+                          GROUP BY r.rol_id 
                           ORDER BY r.nombre""")
         roles = cursor.fetchall()
         
@@ -1682,7 +2088,7 @@ def admin_precios():
                          SET servicio_id = %s, cilindros_min = %s, cilindros_max = %s, 
                              anio_min = %s, anio_max = %s, precio_base = %s, 
                              precio_por_cilindro = %s, precio_por_anio = %s, activo = %s
-                         WHERE id = %s"""
+                         WHERE servicio_precio_id = %s"""
                 cursor.execute(sql, (
                     servicio_id, cilindros_min, cilindros_max, anio_min_int, anio_max_int,
                     precio_base, precio_por_cilindro, precio_por_anio, activo, precio_id
@@ -1692,7 +2098,7 @@ def admin_precios():
             
             elif accion == 'eliminar':
                 precio_id = int(request.form.get('id', 0))
-                cursor.execute("DELETE FROM servicio_precios WHERE id = %s", (precio_id,))
+                cursor.execute("DELETE FROM servicio_precios WHERE servicio_precio_id = %s", (precio_id,))
                 conn.commit()
                 flash('Precio eliminado exitosamente', 'success')
         
@@ -1702,7 +2108,7 @@ def admin_precios():
         
         cursor.execute("""SELECT sp.*, s.nombre as servicio_nombre 
                           FROM servicio_precios sp 
-                          INNER JOIN servicios s ON sp.servicio_id = s.id 
+                          INNER JOIN servicios s ON sp.servicio_id = s.servicio_id 
                           ORDER BY s.nombre, sp.cilindros_min""")
         precios = cursor.fetchall()
         
@@ -1789,14 +2195,31 @@ def enviar_confirmacion_cita(cita_id):
         cursor.execute("""SELECT c.*, cl.nombre as cliente_nombre, cl.telefono as cliente_telefono, 
                          cl.correo as cliente_correo, s.nombre as servicio_nombre_completo
                          FROM citas c
-                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
-                         LEFT JOIN servicios s ON c.servicio_id = s.id
-                         WHERE c.id = %s""", (cita_id,))
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                         LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                         WHERE c.cita_id = %s""", (cita_id,))
         cita = cursor.fetchone()
         
         if not cita:
             print(f"[ERROR] No se encontró la cita con ID {cita_id}")
             return False
+        
+        # Obtener servicios relacionados para la cita
+        try:
+            cursor.execute("""SELECT s.servicio_id, s.nombre 
+                             FROM citas_servicios cs
+                             JOIN servicios s ON cs.servicio_id = s.servicio_id
+                             WHERE cs.cita_id = %s
+                             ORDER BY s.nombre""", (cita_id,))
+            servicios_relacionados = cursor.fetchall()
+            cita['servicios_relacionados'] = servicios_relacionados
+            # Si hay servicios relacionados, actualizar el campo servicio para el email
+            if servicios_relacionados:
+                servicios_nombres = [s['nombre'] for s in servicios_relacionados]
+                cita['servicio'] = ', '.join(servicios_nombres)
+        except Exception as e:
+            print(f"[WARNING] Error obteniendo servicios relacionados para email: {e}")
+            cita['servicios_relacionados'] = []
         
         print(f"[DEBUG] Cita encontrada: {cita}")
         
@@ -1879,8 +2302,8 @@ def enviar_cotizacion_por_correo(cotizacion_id):
         cursor = get_cursor(conn)
         cursor.execute("""SELECT c.*, s.nombre as servicio_nombre 
                           FROM cotizaciones c 
-                          LEFT JOIN servicios s ON c.servicio_id = s.id 
-                          WHERE c.id = %s""", (cotizacion_id,))
+                          LEFT JOIN servicios s ON c.servicio_id = s.servicio_id 
+                          WHERE c.cotizacion_id = %s""", (cotizacion_id,))
         cotizacion = cursor.fetchone()
         
         if not cotizacion:
@@ -1943,7 +2366,7 @@ def admin_cotizaciones():
         # Obtener cotizaciones
         cursor.execute("""SELECT c.*, s.nombre as servicio_nombre 
                          FROM cotizaciones c 
-                         LEFT JOIN servicios s ON c.servicio_id = s.id 
+                         LEFT JOIN servicios s ON c.servicio_id = s.servicio_id 
                          ORDER BY c.fecha_envio DESC""")
         cotizaciones = cursor.fetchall()
         
@@ -2000,7 +2423,7 @@ def admin_citas():
             if accion == 'eliminar':
                 cita_id = int(request.form.get('id', 0))
                 try:
-                    cursor.execute("DELETE FROM citas WHERE id = %s", (cita_id,))
+                    cursor.execute("DELETE FROM citas WHERE cita_id = %s", (cita_id,))
                     conn.commit()
                     flash('Cita eliminada exitosamente', 'success')
                 except Error as e:
@@ -2009,7 +2432,7 @@ def admin_citas():
                 cita_id = int(request.form.get('id', 0))
                 nuevo_estatus = request.form.get('estatus', 'Pendiente').strip()
                 try:
-                    cursor.execute("UPDATE citas SET estatus = %s WHERE id = %s", (nuevo_estatus, cita_id))
+                    cursor.execute("UPDATE citas SET estatus = %s WHERE cita_id = %s", (nuevo_estatus, cita_id))
                     conn.commit()
                     flash(f'Estatus de la cita actualizado a: {nuevo_estatus}', 'success')
                 except Error as e:
@@ -2020,9 +2443,9 @@ def admin_citas():
                          cl.correo as cliente_correo, s.nombre as servicio_nombre_completo,
                          u.nombre as usuario_nombre
                          FROM citas c
-                         LEFT JOIN clientes cl ON c.cliente_id = cl.id
-                         LEFT JOIN servicios s ON c.servicio_id = s.id
-                         LEFT JOIN usuarios u ON c.usuario_id = u.id
+                         LEFT JOIN clientes cl ON c.cliente_id = cl.cliente_id
+                         LEFT JOIN servicios s ON c.servicio_id = s.servicio_id
+                         LEFT JOIN usuarios u ON c.usuario_id = u.usuario_id
                          ORDER BY c.fecha DESC, c.hora DESC""")
         citas = cursor.fetchall()
         

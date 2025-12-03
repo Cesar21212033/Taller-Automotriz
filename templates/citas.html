@@ -5,7 +5,42 @@
 {% block content %}
 <div class="form-container">
     <h2>Agendar Cita</h2>
-    <form method="POST" action="{{ url_for('citas') }}">
+    
+    {% if cotizacion %}
+    <div style="background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+        <p style="margin: 0; color: #1976D2;"><strong>📋 Cotización seleccionada:</strong></p>
+        <p style="margin: 5px 0 0 0;">
+            <strong>Servicio:</strong> {{ cotizacion.servicio_nombre or cotizacion.servicio }} | 
+            <strong>Precio estimado:</strong> ${{ "%.2f"|format(cotizacion.precio_calculado) if cotizacion.precio_calculado else 'N/A' }}
+        </p>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;">
+            El servicio ya está pre-seleccionado. Solo necesitas elegir fecha y hora.
+        </p>
+    </div>
+    {% endif %}
+    
+    <form method="POST" action="{{ url_for('citas') }}" id="formCitas" onsubmit="return validarFormularioCitas()">
+        {% if cotizacion %}
+        <input type="hidden" name="cotizacion_id" value="{{ cotizacion.cotizacion_id }}">
+        {% endif %}
+        {% if usuario and usuario.usuario_id %}
+        {# Usuario logueado: mostrar información pero no campos editables #}
+        <div class="form-group" style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #666; font-size: 14px;"><strong>Datos de tu cuenta:</strong></p>
+            <p style="margin: 5px 0 0 0; color: #333;"><strong>Nombre:</strong> {{ usuario.nombre }}</p>
+            <p style="margin: 5px 0 0 0; color: #333;"><strong>Email:</strong> {{ usuario.email }}</p>
+            {% if usuario.telefono %}
+            <p style="margin: 5px 0 0 0; color: #333;"><strong>Teléfono:</strong> {{ usuario.telefono }}</p>
+            {% endif %}
+        </div>
+        {# Campos ocultos con los datos del usuario para el POST #}
+        <input type="hidden" name="nombre" value="{{ usuario.nombre }}">
+        <input type="hidden" name="email" value="{{ usuario.email }}">
+        {% if usuario.telefono %}
+        <input type="hidden" name="telefono" value="{{ usuario.telefono }}">
+        {% endif %}
+        {% else %}
+        {# Usuario no logueado: mostrar campos editables #}
         <div class="form-group">
             <label for="nombre">Nombre:</label>
             <input type="text" id="nombre" name="nombre" required>
@@ -20,6 +55,7 @@
             <label for="email">Correo Electrónico:</label>
             <input type="email" id="email" name="email" required>
         </div>
+        {% endif %}
 
         <div class="form-group">
             <label for="fecha">Fecha:</label>
@@ -36,13 +72,28 @@
         </div>
 
         <div class="form-group">
-            <label for="servicio_id">Servicio *</label>
-            <select id="servicio_id" name="servicio_id" required>
-                <option value="">Seleccione un servicio</option>
+            <label for="servicio_id">Servicios * (Puedes seleccionar múltiples servicios)</label>
+            {% if cotizacion and cotizacion.servicio_id %}
+            {# Si viene desde una cotización, mostrar solo el servicio seleccionado como campo oculto #}
+            <input type="hidden" name="servicio_id[]" value="{{ cotizacion.servicio_id }}">
+            <div style="padding: 10px; background-color: #e7f3ff; border-radius: 5px; border-left: 3px solid #2196F3;">
+                <p style="margin: 0;"><strong>Servicio pre-seleccionado:</strong> {{ cotizacion.servicio_nombre or cotizacion.servicio }}</p>
+                <small class="text-muted">Este servicio viene de tu cotización</small>
+            </div>
+            {% else %}
+            <select id="servicio_id" name="servicio_id[]" multiple required size="6" style="min-height: 120px;">
                 {% for servicio in servicios %}
-                    <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                    <option value="{{ servicio.servicio_id }}">{{ servicio.nombre }}</option>
                 {% endfor %}
             </select>
+            <small class="text-muted d-block mt-5">
+                💡 Mantén presionada la tecla <strong>Ctrl</strong> (Windows) o <strong>Cmd</strong> (Mac) para seleccionar múltiples servicios
+            </small>
+            <div id="serviciosSeleccionados" style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 5px; display: none;">
+                <strong>Servicios seleccionados:</strong>
+                <ul id="listaServicios" style="margin: 5px 0 0 0; padding-left: 20px;"></ul>
+            </div>
+            {% endif %}
         </div>
 
         <div class="button-container">
@@ -132,7 +183,58 @@ function cargarHorariosDisponibles(fecha) {
         });
 }
 
-document.addEventListener('DOMContentLoaded', initCitas);
+function actualizarServiciosSeleccionados() {
+    const servicioSelect = document.getElementById('servicio_id');
+    const serviciosSeleccionadosDiv = document.getElementById('serviciosSeleccionados');
+    const listaServicios = document.getElementById('listaServicios');
+    
+    if (!servicioSelect || servicioSelect.disabled) return;
+    
+    const seleccionados = Array.from(servicioSelect.selectedOptions);
+    
+    if (seleccionados.length > 0) {
+        listaServicios.innerHTML = '';
+        seleccionados.forEach(option => {
+            const li = document.createElement('li');
+            li.textContent = option.text;
+            listaServicios.appendChild(li);
+        });
+        serviciosSeleccionadosDiv.style.display = 'block';
+    } else {
+        serviciosSeleccionadosDiv.style.display = 'none';
+    }
+}
+
+function validarFormularioCitas() {
+    const servicioSelect = document.getElementById('servicio_id');
+    const serviciosHidden = document.querySelectorAll('input[name="servicio_id[]"][type="hidden"]');
+    
+    // Si hay un select múltiple
+    if (servicioSelect && !servicioSelect.disabled) {
+        const seleccionados = Array.from(servicioSelect.selectedOptions);
+        if (seleccionados.length === 0) {
+            alert('Por favor seleccione al menos un servicio');
+            servicioSelect.focus();
+            return false;
+        }
+    } else if (serviciosHidden.length === 0) {
+        // Si no hay select ni campos ocultos, algo está mal
+        alert('Por favor seleccione al menos un servicio');
+        return false;
+    }
+    
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initCitas();
+    
+    const servicioSelect = document.getElementById('servicio_id');
+    if (servicioSelect && !servicioSelect.disabled) {
+        servicioSelect.addEventListener('change', actualizarServiciosSeleccionados);
+        actualizarServiciosSeleccionados(); // Actualizar al cargar si hay selecciones
+    }
+});
 </script>
 {% endblock %}
 

@@ -44,12 +44,12 @@
             {% if servicios %}
                 {% for servicio in servicios %}
                     <tr>
-                        <td>{{ servicio.id }}</td>
+                        <td>{{ servicio.servicio_id }}</td>
                         <td>{{ servicio.nombre }}</td>
                         <td>{{ servicio.descripcion or '-' }}</td>
                         <td>
                             <button onclick="editarServicio({{ servicio|tojson }})" class="btn btn-warning btn-sm">Editar</button>
-                            <button onclick="eliminarServicio({{ servicio.id }})" class="btn btn-danger btn-sm">Eliminar</button>
+                            <button onclick="eliminarServicio({{ servicio.servicio_id }})" class="btn btn-danger btn-sm">Eliminar</button>
                         </td>
                     </tr>
                 {% endfor %}
@@ -90,7 +90,7 @@
 
 <script>
 function editarServicio(servicio) {
-    document.getElementById('edit_id').value = servicio.id;
+    document.getElementById('edit_id').value = servicio.servicio_id;
     document.getElementById('edit_nombre').value = servicio.nombre;
     document.getElementById('edit_descripcion').value = servicio.descripcion || '';
     

@@ -21,7 +21,7 @@
             <select id="servicio_id" name="servicio_id" required>
                 <option value="">Seleccione un servicio</option>
                 {% for servicio in servicios %}
-                    <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                    <option value="{{ servicio.servicio_id }}">{{ servicio.nombre }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -103,7 +103,7 @@
                             <button 
                                 class="btn btn-warning btn-sm" 
                                 onclick="editarPrecio(this)"
-                                data-id="{{ precio.id }}"
+                                data-id="{{ precio.servicio_precio_id }}"
                                 data-servicio-id="{{ precio.servicio_id }}"
                                 data-cilindros-min="{{ precio.cilindros_min }}"
                                 data-cilindros-max="{{ precio.cilindros_max }}"
@@ -115,7 +115,7 @@
                                 data-activo="{{ 1 if precio.activo else 0 }}">
                                 Editar
                             </button>
-                            <button class="btn btn-danger btn-sm" onclick="eliminarPrecio(this)" data-id="{{ precio.id }}">Eliminar</button>
+                            <button class="btn btn-danger btn-sm" onclick="eliminarPrecio(this)" data-id="{{ precio.servicio_precio_id }}">Eliminar</button>
                         </td>
                     </tr>
                 {% endfor %}
@@ -140,7 +140,7 @@
                 <label for="edit_servicio_id">Servicio *</label>
                 <select id="edit_servicio_id" name="servicio_id" required>
                     {% for servicio in servicios %}
-                        <option value="{{ servicio.id }}">{{ servicio.nombre }}</option>
+                        <option value="{{ servicio.servicio_id }}">{{ servicio.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -210,7 +210,7 @@ function editarPrecio(button) {
         activo: button.getAttribute('data-activo')
     };
     
-    document.getElementById('edit_id').value = precio.id;
+    document.getElementById('edit_id').value = precio.servicio_precio_id;
     document.getElementById('edit_servicio_id').value = precio.servicio_id;
     document.getElementById('edit_cilindros_min').value = precio.cilindros_min;
     document.getElementById('edit_cilindros_max').value = precio.cilindros_max;

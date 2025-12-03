@@ -45,14 +45,14 @@
             {% if roles %}
                 {% for rol in roles %}
                     <tr>
-                        <td>{{ rol.id }}</td>
+                        <td>{{ rol.rol_id }}</td>
                         <td>{{ rol.nombre }}</td>
                         <td>{{ rol.descripcion or '-' }}</td>
                         <td>{{ rol.total_usuarios }}</td>
                         <td>
                             <button onclick="editarRol({{ rol|tojson }})" class="btn btn-warning btn-sm">Editar</button>
                             {% if rol.total_usuarios == 0 %}
-                                <button onclick="eliminarRol({{ rol.id }})" class="btn btn-danger btn-sm">Eliminar</button>
+                                <button onclick="eliminarRol({{ rol.rol_id }})" class="btn btn-danger btn-sm">Eliminar</button>
                             {% else %}
                                 <button disabled class="btn btn-danger btn-sm" title="No se puede eliminar porque tiene usuarios asignados">Eliminar</button>
                             {% endif %}
@@ -96,7 +96,7 @@
 
 <script>
 function editarRol(rol) {
-    document.getElementById('edit_id').value = rol.id;
+    document.getElementById('edit_id').value = rol.rol_id;
     document.getElementById('edit_nombre').value = rol.nombre;
     document.getElementById('edit_descripcion').value = rol.descripcion || '';
     

@@ -27,7 +27,7 @@
             {% if citas %}
                 {% for cita in citas %}
                     <tr>
-                        <td>{{ cita.id }}</td>
+                        <td>{{ cita.cita_id }}</td>
                         <td>{{ cita.nombre }}</td>
                         <td>
                             <div>{{ cita.telefono }}</div>
@@ -64,7 +64,7 @@
                         <td>
                             <form method="POST" style="display: inline-block; margin-bottom: 5px;">
                                 <input type="hidden" name="accion" value="cambiar_estatus">
-                                <input type="hidden" name="id" value="{{ cita.id }}">
+                                <input type="hidden" name="id" value="{{ cita.cita_id }}">
                                 <select name="estatus" onchange="this.form.submit()" class="estatus-select" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
                                     <option value="Pendiente" {% if cita.estatus == 'Pendiente' or not cita.estatus %}selected{% endif %}>Pendiente</option>
                                     <option value="Confirmada" {% if cita.estatus == 'Confirmada' %}selected{% endif %}>Confirmada</option>
@@ -87,7 +87,7 @@
                         <td>
                             <form method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar esta cita?');">
                                 <input type="hidden" name="accion" value="eliminar">
-                                <input type="hidden" name="id" value="{{ cita.id }}">
+                                <input type="hidden" name="id" value="{{ cita.cita_id }}">
                                 <button type="submit" class="btn-danger btn-sm">Eliminar</button>
                             </form>
                         </td>

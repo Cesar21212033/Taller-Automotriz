@@ -16,7 +16,7 @@
                 <th>Fecha</th>
                 <th>Hora</th>
                 <th>Estatus</th>
-                <th>Teléfono</th>
+                <th>Cotización</th>
                 <th>Fecha de Registro</th>
             </tr>
         </thead>
@@ -24,7 +24,19 @@
             {% if citas %}
                 {% for cita in citas %}
                     <tr>
-                        <td>{{ cita.servicio }}</td>
+                        <td>
+                            {% if cita.servicios_relacionados and cita.servicios_relacionados|length > 0 %}
+                                <div>
+                                    {% for servicio in cita.servicios_relacionados %}
+                                        <span style="display: inline-block; background-color: #e7f3ff; padding: 4px 8px; border-radius: 4px; margin: 2px; font-size: 0.9em;">
+                                            {{ servicio.nombre }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ cita.servicio or 'N/A' }}
+                            {% endif %}
+                        </td>
                         <td>{{ cita.fecha }}</td>
                         <td>
                             {% if cita.hora %}
@@ -57,7 +69,33 @@
                                 {{ cita.estatus or 'Pendiente' }}
                             </span>
                         </td>
-                        <td>{{ cita.telefono }}</td>
+                        <td>
+                            {% if cita.cotizacion_id %}
+                            <div style="background-color: #e7f3ff; padding: 8px; border-radius: 5px; border-left: 3px solid #2196F3;">
+                                <p style="margin: 0; font-size: 0.9em;">
+                                    <strong style="color: #1976D2;">💰 Cotización #{{ cita.cotizacion_id }}</strong>
+                                </p>
+                                {% if cita.cotizacion_precio %}
+                                <p style="margin: 5px 0 0 0; font-size: 0.95em;">
+                                    <strong style="color: #28a745;">${{ "%.2f"|format(cita.cotizacion_precio) }}</strong>
+                                </p>
+                                {% endif %}
+                                {% if cita.cotizacion_marca %}
+                                <p style="margin: 5px 0 0 0; font-size: 0.85em; color: #666;">
+                                    {{ cita.cotizacion_marca }}
+                                    {% if cita.cotizacion_modelo %}{{ cita.cotizacion_modelo }}{% endif %}
+                                    {% if cita.cotizacion_anio %}({{ cita.cotizacion_anio }}){% endif %}
+                                </p>
+                                {% endif %}
+                                <button onclick="verCotizacion({{ cita.cotizacion_id }})" 
+                                        style="margin-top: 5px; background-color: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                    Ver Detalles
+                                </button>
+                            </div>
+                            {% else %}
+                            <span class="text-muted" style="font-size: 0.9em;">Sin cotización</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if cita.fecha_registro %}
                                 {{ cita.fecha_registro.strftime('%d/%m/%Y %H:%M') if cita.fecha_registro else 'N/A' }}
@@ -78,5 +116,93 @@
         </tbody>
     </table>
 </div>
+
+<!-- Modal para ver detalles de cotización -->
+<div id="modalCotizacion" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: white; margin: 5% auto; padding: 20px; border-radius: 10px; width: 80%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <span onclick="cerrarModalCotizacion()" style="float: right; font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa;">&times;</span>
+        <h3>Detalles de la Cotización</h3>
+        <div id="cotizacionContenido"></div>
+    </div>
+</div>
+
+<script>
+function verCotizacion(cotizacionId) {
+    // Cargar detalles de la cotización desde el servidor
+    fetch(`/usuario/cotizaciones/${cotizacionId}/detalles`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const cotizacion = data.cotizacion;
+                let html = `
+                    <div style="margin-top: 20px;">
+                        <p><strong>ID Cotización:</strong> #${cotizacion.id || cotizacion.cotizacion_id}</p>
+                        <p><strong>Servicio:</strong> ${cotizacion.servicio || cotizacion.servicio_nombre || 'N/A'}</p>
+                        <p><strong>Vehículo:</strong> ${cotizacion.marca_vehiculo || 'N/A'} ${cotizacion.modelo_vehiculo || ''}</p>
+                        <p><strong>Año:</strong> ${cotizacion.anio_vehiculo || 'N/A'}</p>
+                        <p><strong>Cilindros:</strong> ${cotizacion.cilindros || 'N/A'}</p>
+                        <p><strong>Precio Estimado:</strong> <span style="color: #28a745; font-size: 1.2em; font-weight: bold;">$${parseFloat(cotizacion.precio_calculado || 0).toFixed(2)}</span></p>
+                        <p><strong>Fecha de Solicitud:</strong> ${new Date(cotizacion.fecha_envio).toLocaleDateString('es-MX')}</p>
+                        ${cotizacion.mensaje ? `<p><strong>Comentarios:</strong><br>${cotizacion.mensaje}</p>` : ''}
+                    </div>
+                `;
+                document.getElementById('cotizacionContenido').innerHTML = html;
+                document.getElementById('modalCotizacion').style.display = 'block';
+            } else {
+                alert('Error al cargar la cotización: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cargar la cotización');
+        });
+}
+
+function cerrarModalCotizacion() {
+    document.getElementById('modalCotizacion').style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+window.onclick = function(event) {
+    const modal = document.getElementById('modalCotizacion');
+    if (event.target == modal) {
+        cerrarModalCotizacion();
+    }
+}
+</script>
+
+<style>
+.estatus-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.estatus-pendiente {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.estatus-confirmada {
+    background-color: #28a745;
+    color: white;
+}
+
+.estatus-en-proceso {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.estatus-completada {
+    background-color: #6c757d;
+    color: white;
+}
+
+.estatus-cancelada {
+    background-color: #dc3545;
+    color: white;
+}
+</style>
 {% endblock %}
 

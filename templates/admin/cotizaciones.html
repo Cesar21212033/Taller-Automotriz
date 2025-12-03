@@ -32,7 +32,7 @@
             {% if cotizaciones %}
                 {% for cotizacion in cotizaciones %}
                     <tr>
-                        <td>{{ cotizacion.id }}</td>
+                        <td>{{ cotizacion.cotizacion_id }}</td>
                         <td>{{ cotizacion.nombre }}</td>
                         <td>
                             <div>{{ cotizacion.telefono }}</div>
@@ -59,7 +59,7 @@
                             {% if cotizacion.email %}
                                 <form method="POST" action="{{ url_for('admin_cotizaciones') }}" class="d-inline">
                                     <input type="hidden" name="accion" value="enviar_correo">
-                                    <input type="hidden" name="id" value="{{ cotizacion.id }}">
+                                    <input type="hidden" name="id" value="{{ cotizacion.cotizacion_id }}">
                                     <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('¿Enviar cotización por correo a {{ cotizacion.email }}?')">
                                         📧 Enviar Correo
                                     </button>

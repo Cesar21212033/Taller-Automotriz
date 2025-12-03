@@ -55,7 +55,7 @@ table tbody tr:hover { background-color: #f8f9fa; }
             <label for="rol_id">Rol *</label>
             <select id="rol_id" name="rol_id" required onchange="validarEmailAdmin()">
                 {% for rol in roles %}
-                    <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                    <option value="{{ rol.rol_id }}">{{ rol.nombre }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -84,7 +84,7 @@ table tbody tr:hover { background-color: #f8f9fa; }
         <tbody>
             {% for usuario in usuarios %}
                 <tr>
-                    <td>{{ usuario.id }}</td>
+                    <td>{{ usuario.usuario_id }}</td>
                     <td>{{ usuario.username }}</td>
                     <td>{{ usuario.nombre }}</td>
                     <td>{{ usuario.email or '-' }}</td>
@@ -95,7 +95,7 @@ table tbody tr:hover { background-color: #f8f9fa; }
                         <button 
                             class="btn btn-warning btn-sm" 
                             onclick="editarUsuario(this)"
-                            data-id="{{ usuario.id }}"
+                            data-id="{{ usuario.usuario_id }}"
                             data-nombre="{{ usuario.nombre }}"
                             data-email="{{ usuario.email or '' }}"
                             data-telefono="{{ usuario.telefono or '' }}"
@@ -103,10 +103,10 @@ table tbody tr:hover { background-color: #f8f9fa; }
                             data-activo="{{ 1 if usuario.activo else 0 }}">
                             Editar
                         </button>
-                        {% if usuario.id != session.usuario_id %}
-                            <button class="btn btn-danger btn-sm" onclick="eliminarUsuario(this)" data-id="{{ usuario.id }}">Eliminar</button>
+                        {% if usuario.usuario_id != session.usuario_id %}
+                            <button class="btn btn-danger btn-sm" onclick="eliminarUsuario(this)" data-id="{{ usuario.usuario_id }}">Eliminar</button>
                         {% endif %}
-                        <button class="btn btn-primary btn-sm" onclick="cambiarPassword(this)" data-id="{{ usuario.id }}">Cambiar Contraseña</button>
+                        <button class="btn btn-primary btn-sm" onclick="cambiarPassword(this)" data-id="{{ usuario.usuario_id }}">Cambiar Contraseña</button>
                     </td>
                 </tr>
             {% endfor %}
@@ -141,7 +141,7 @@ table tbody tr:hover { background-color: #f8f9fa; }
                 <label for="edit_rol_id">Rol *</label>
                 <select id="edit_rol_id" name="rol_id" required>
                     {% for rol in roles %}
-                        <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                        <option value="{{ rol.rol_id }}">{{ rol.nombre }}</option>
                     {% endfor %}
                 </select>
             </div>
